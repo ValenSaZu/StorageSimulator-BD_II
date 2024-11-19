@@ -8,12 +8,17 @@ class Pista:
     def __init__(self, num_sectores):
         self.sectores = [Sector() for _ in range(num_sectores)]
 
-class Disco:
+class Plato:
     def __init__(self, num_pistas, num_sectores_por_pista):
         self.pistas = [Pista(num_sectores_por_pista) for _ in range(num_pistas)]
 
-    def escribir_dato_con_offset(self, pista_index, sector_index, datos):
-        sector = self.pistas[pista_index].sectores[sector_index]
+class Disco:
+    def __init__(self, num_platos, num_pistas_por_plato, num_sectores_por_pista):
+        self.platos = [Plato(num_pistas_por_plato, num_sectores_por_pista) for _ in range(num_platos)]
+
+    def escribir_dato_con_offset(self, plato_index, pista_index, sector_index, datos):
+        plato = self.platos[plato_index]
+        sector = plato.pistas[pista_index].sectores[sector_index]
         
         if sector.ocupado:
             sector.offset += len(sector.datos)
@@ -23,8 +28,9 @@ class Disco:
             sector.ocupado = True
             sector.offset = len(datos)
 
-    def leer_dato(self, pista_index, sector_index):
-        sector = self.pistas[pista_index].sectores[sector_index]
+    def leer_dato(self, plato_index, pista_index, sector_index):
+        plato = self.platos[plato_index]
+        sector = plato.pistas[pista_index].sectores[sector_index]
         if sector.ocupado:
             return sector.datos
         return "Sector vacío"

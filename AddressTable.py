@@ -1,6 +1,7 @@
 class Registro:
-    def __init__(self, id_registro, pista, sector, offset, tamaño, datos):
+    def __init__(self, id_registro, plato, pista, sector, offset, tamaño, datos):
         self.id_registro = id_registro
+        self.plato = plato
         self.pista = pista
         self.sector = sector
         self.offset = offset
@@ -11,8 +12,8 @@ class TablaDeDirecciones:
     def __init__(self):
         self.tabla = []
 
-    def insertar_registro(self, id_registro, pista, sector, offset, tamaño, datos):
-        nuevo_registro = Registro(id_registro, pista, sector, offset, tamaño, datos)
+    def insertar_registro(self, id_registro, plato, pista, sector, offset, tamaño, datos):
+        nuevo_registro = Registro(id_registro, plato, pista, sector, offset, tamaño, datos)
         self.tabla.append(nuevo_registro)
 
     def leer_registro(self, id_registro):
