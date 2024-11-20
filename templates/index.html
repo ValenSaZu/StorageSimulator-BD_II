@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Base de Datos</title>
+    <link rel="stylesheet" href="./style.css">
+    <script>
+        function iniciarSimulador() {
+            const tipoBD = document.querySelector('input[name="tipo_bd"]:checked').value;
+            const tipoDisco = document.querySelector('input[name="tipo_disco"]:checked').value;
+            window.location.href = `simulador.html?tipo_bd=${tipoBD}&tipo_disco=${tipoDisco}`;
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Bienvenido al Simulador de Base de Datos</h1>
+        
+        <div class="options">
+            <div class="option">
+                <h2>Tipo de Base de Datos</h2>
+                <label>
+                    <input type="radio" name="tipo_bd" value="sql" required>
+                    <span>SQL</span>
+                </label>
+                <label>
+                    <input type="radio" name="tipo_bd" value="nosql">
+                    <span>NoSQL</span>
+                </label>
+            </div>
+
+            <div class="option">
+                <h2>Tipo de Disco</h2>
+                <label>
+                    <input type="radio" name="tipo_disco" value="ssd" required>
+                    <span>SSD</span>
+                </label>
+                <label>
+                    <input type="radio" name="tipo_disco" value="hdd">
+                    <span>HDD</span>
+                </label>
+            </div>
+        </div>
+
+        <button onclick="iniciarSimulador()">Empezar</button>
+    </div>
+</body>
+</html>
