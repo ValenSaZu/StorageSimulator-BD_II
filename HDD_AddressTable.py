@@ -30,3 +30,6 @@ class TablaDirecciones_HDD:
 
     def obtener_direccion(self, direccion_logica):
         return self.direcciones.get(direccion_logica, None)
+    
+    def listar_direcciones(self):
+        return self.direcciones.items()
