@@ -20,3 +20,6 @@ def simulador():
     db_manager = DatabaseManager(tipo_disco=tipo_disco, tipo_bd=tipo_bd)
 
     return jsonify({"mensaje": f"Simulador iniciado con {tipo_disco} y {tipo_bd}."}), 200
+
+if __name__ == "__main__":
+    app.run(debug=True)

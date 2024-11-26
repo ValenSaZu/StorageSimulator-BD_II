@@ -27,22 +27,9 @@ h1 {
     margin-bottom: 20px;
 }
 
-.options {
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-}
-
-.option {
-    flex: 1;
-    min-width: 200px;
-    margin: 10px;
-}
-
 h2 {
     margin-bottom: 10px;
-    color: #555;
+    color: #666;
 }
 
 label {
