@@ -1,59 +1,129 @@
-import tkinter as tk
-from tkinter import messagebox
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from HDDStructure import HDD
-from database_manager import SQLProcessor
+import pygame
+import math
+import sys
 
-class DiskSimulatorApp:
-    def __init__(self, master):
-        self.master = master
-        master.title("Simulador de Disco Duro")
+pygame.init()
+WIDTH, HEIGHT = 800, 800
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Simulador de Base de Datos")
 
-        self.num_platos = 4
-        self.num_pistas_por_plato = 8
-        self.num_sectores_por_pista = 16
-        self.tamano_bytes = 512
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+BLUE = (50, 150, 255)
+LIGHT_BLUE = (100, 200, 255)
+DARK_BLUE = (0, 100, 200)
 
-        self.query_label = tk.Label(master, text="Ingrese su consulta:")
-        self.query_label.pack()
+center = (WIDTH // 2 + 150, HEIGHT // 2)
+radio_base = 50
+incremento_radio = 30
+num_pistas = 0
+num_sectores = 0
 
-        self.query_text = tk.Text(master, height=10, width=50)
-        self.query_text.pack()
+class HDD:
+    def __init__(self, num_pistas, num_sectores):
+        self.num_pistas = num_pistas
+        self.num_sectores = num_sectores
 
-        self.execute_button = tk.Button(master, text="Ejecutar Consulta", command=self.execute_query)
-        self.execute_button.pack()
+def draw_disk():
+    for pista in range(num_pistas):
+        radio = radio_base + incremento_radio * pista
+        pygame.draw.circle(screen, WHITE, center, radio, 1)
+        for sector in range(num_sectores):
+            angle = (2 * math.pi / num_sectores) * sector
+            x = center[0] + radio * math.cos(angle)
+            y = center[1] - radio * math.sin(angle)
+            pygame.draw.line(screen, WHITE, center, (x, y), 1)
 
-        self.figure = plt.Figure(figsize=(5, 5), dpi=100)
-        self.canvas = FigureCanvasTkAgg(self.figure, master)
-        self.canvas.get_tk_widget().pack(side=tk.RIGHT)
+def show_start_screen():
+    font = pygame.font.Font(None, 74)
+    text = font.render("Simulador de Base de Datos", True, WHITE)
+    screen.fill(BLACK)
+    screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
+    pygame.display.flip()
+    pygame.time.wait(2000)
 
-        self.plot_disk()
+def create_disk_interface():
+    global num_pistas, num_sectores
+    input_box = pygame.Rect(50, 100, 200, 40)
+    color_inactive = LIGHT_BLUE
+    color_active = DARK_BLUE
+    color = color_inactive
+    active = False
+    text = ''
+    font = pygame.font.Font(None, 32)
 
-    def plot_disk(self):
-        ax = self.figure.add_subplot(111)
-        ax.clear()
-        ax.set_title("Simulación de Disco Duro")
-        ax.pie([1, 1, 1, 1], labels=["Plato 1", "Plato 2", "Plato 3", "Plato 4"], autopct='%1.1f%%')
-        ax.axis('equal')
-        self.canvas.draw()
+    # Título
+    title_font = pygame.font.Font(None, 48)
+    title_surface = title_font.render("Crear Disco Duro", True, WHITE)
 
-    def execute_query(self):
-        query = self.query_text.get("1.0", tk.END).strip()
-        if not query:
-            messagebox.showerror("Error", "Por favor ingrese una consulta")
-            return
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if input_box.collidepoint(event.pos):
+                    active = not active
+                else:
+                    active = False
+                color = color_active if active else color_inactive
+            if event.type == pygame.KEYDOWN:
+                if active:
+                    if event.key == pygame.K_RETURN:
+                        try:
+                            num_pistas, num_sectores = map(int, text.split(","))
+                            if num_pistas <= 0 or num_sectores <= 0:
+                                raise ValueError("Los números deben ser mayores que cero.")
+                            return
+                        except Exception as e:
+                            print(f"Error: {e}")
+                            text = ''
+                    elif event.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+
+        screen.fill(BLACK)
+        screen.blit(title_surface, (50, 50))
+        pygame.draw.rect(screen, color, input_box, 2)
+        txt_surface = font.render(text, True, color)
+        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+        pygame.display.flip()
+
+def query_interface():
+    global num_pistas, num_sectores
+    font = pygame.font.Font(None, 32)
+    query_text = ""
+    input_box = pygame.Rect(50, HEIGHT - 100, 700, 40)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    print(f"Ejecutar consulta: {query_text}")
+                    query_text = ''
+                elif event.key == pygame.K_BACKSPACE:
+                    query_text = query_text[:-1]
+                else:
+                    query_text += event.unicode
+
+        screen.fill(BLACK)
+        draw_disk()
         
-        try:
-            hdd = HDD(self.num_platos, self.num_pistas_por_plato, self.num_sectores_por_pista, self.tamano_bytes)
-            sql_processor = SQLProcessor(hdd)
-            sql_processor.procesar_query(query)
-            self.plot_disk()
-            messagebox.showinfo("Consulta Ejecutada", f"Se ejecutó la consulta: {query}")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+        title_surface = font.render("Ingrese su consulta SQL:", True, WHITE)
+        screen.blit(title_surface, (50, HEIGHT - 150))
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = DiskSimulatorApp(root)
-    root.mainloop()
+        txt_surface = font.render(query_text, True, WHITE)
+        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+        pygame.draw.rect(screen, WHITE, input_box, 2)
+        pygame.display.flip()
+
+show_start_screen()
+create_disk_interface()
+hdd = HDD(num_pistas, num_sectores)
+
+while True:
+    query_interface()

@@ -27,7 +27,6 @@ class HDD:
 
     def escribir_dato(self, datos, prefijo="dato"):
         direccion_logica = self.generar_direccion_logica(prefijo)
-        # Buscar el primer sector disponible
         for plato_index, plato in enumerate(self.platos):
             for pista_index, pista in enumerate(plato.pistas):
                 for sector_index, sector in enumerate(pista.sectores):

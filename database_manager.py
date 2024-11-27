@@ -69,7 +69,6 @@ class SQLProcessor:
         if len(columnas) != len(datos):
             raise ValueError(f"El número de valores no coincide con las columnas de la tabla '{nombre_tabla}'.")
 
-        # Find the table's logical address
         direccion_logica_tabla, tabla_data = self._buscar_tabla(nombre_tabla)
         
         direccion_fila = self.hdd.escribir_dato(json.dumps(datos), prefijo=f"fila_{nombre_tabla}")
