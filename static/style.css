@@ -8,18 +8,32 @@ body {
     margin: 0;
     padding: 0;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     height: 100vh;
 }
 
 .container {
-    max-width: 600px;
+    display: flex;
+    max-width: 1200px;
     background: white;
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    text-align: center;
+    text-align: left;
+    width: 100%;
+}
+
+.operations {
+    width: 300px;
+    margin-right: 30px;
+}
+
+.disk-visualization {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 h1 {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,14 +13,9 @@
     <div id="app">
         <h1>Simulador de Base de Datos</h1>
         <div class="container">
-            <div class="disk-visualization">
-                <svg id="disk-svg" width="600" height="600"></svg>
-            </div>
             <div class="operations">
                 <h2>Operaciones</h2>
                 <div class="operation">
-                    <label for="logical-address">Dirección lógica:</label>
-                    <input type="text" id="logical-address" v-model="logicalAddress">
                     <label for="data">Datos:</label>
                     <input type="text" id="data" v-model="data">
                     <button @click="writeData">Escribir</button>
@@ -33,6 +28,10 @@
                     <button @click="executeQuery">Ejecutar Consulta</button>
                     <pre>{{ queryResult }}</pre>
                 </div>
+            </div>
+
+            <div class="disk-visualization">
+                <svg id="disk-svg" width="600" height="600"></svg>
             </div>
         </div>
     </div>
