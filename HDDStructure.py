@@ -26,7 +26,6 @@ class HDD:
         return f"{prefijo}:{self.contador_direcciones}"
 
     def escribir_dato(self, datos, prefijo="dato"):
-
         datos_bytes = datos.encode('utf-8')
         tamano_datos = len(datos_bytes)
         tamano_sector = self.platos[0].pistas[0].sectores[0].tamano_bytes
@@ -55,6 +54,7 @@ class HDD:
             else:
                 raise ValueError("No hay espacio disponible en el HDD.")
 
+        print(f"Fragmentos escritos: {direcciones_fragmentos}")
         return direcciones_fragmentos
 
     def leer_dato(self, direcciones_logicas):
