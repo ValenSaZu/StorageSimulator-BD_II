@@ -26,23 +26,48 @@ class HDD:
         return f"{prefijo}:{self.contador_direcciones}"
 
     def escribir_dato(self, datos, prefijo="dato"):
-        direccion_logica = self.generar_direccion_logica(prefijo)
-        for plato_index, plato in enumerate(self.platos):
-            for pista_index, pista in enumerate(plato.pistas):
-                for sector_index, sector in enumerate(pista.sectores):
-                    if not sector.ocupado:
-                        sector.datos = datos
-                        sector.ocupado = True
-                        sector.offset = len(datos)
-                        self.tabla_direcciones.agregar_direccion(direccion_logica, f"{plato_index}-{pista_index}-{sector_index}")
-                        return direccion_logica
-        raise ValueError("No hay espacio disponible en el HDD.")
 
-    def leer_dato(self, direccion_logica):
-        plato_index, pista_index, sector_index = self._traducir_direccion(direccion_logica)
-        plato = self.platos[plato_index]
-        sector = plato.pistas[pista_index].sectores[sector_index]
-        return sector.datos if sector.ocupado else "Sector vacío"
+        datos_bytes = datos.encode('utf-8')
+        tamano_datos = len(datos_bytes)
+        tamano_sector = self.platos[0].pistas[0].sectores[0].tamano_bytes
+
+        fragmentos = [datos_bytes[i:i + tamano_sector] for i in range(0, tamano_datos, tamano_sector)]
+        direcciones_fragmentos = []
+
+        for fragmento in fragmentos:
+            direccion_logica = self.generar_direccion_logica(prefijo)
+            for plato_index, plato in enumerate(self.platos):
+                for pista_index, pista in enumerate(plato.pistas):
+                    for sector_index, sector in enumerate(pista.sectores):
+                        if not sector.ocupado:
+                            sector.datos = fragmento.decode('utf-8', errors='replace')
+                            sector.ocupado = True
+                            sector.offset = len(fragmento)
+                            self.tabla_direcciones.agregar_direccion(direccion_logica, f"{plato_index}-{pista_index}-{sector_index}")
+                            direcciones_fragmentos.append(direccion_logica)
+                            break
+                    else:
+                        continue
+                    break
+                else:
+                    continue
+                break
+            else:
+                raise ValueError("No hay espacio disponible en el HDD.")
+
+        return direcciones_fragmentos
+
+    def leer_dato(self, direcciones_logicas):
+        datos = b""
+        for direccion_logica in direcciones_logicas:
+            plato_index, pista_index, sector_index = self._traducir_direccion(direccion_logica)
+            plato = self.platos[plato_index]
+            sector = plato.pistas[pista_index].sectores[sector_index]
+            if sector.ocupado:
+                datos += sector.datos.encode('utf-8')
+            else:
+                raise ValueError(f"Sector {direccion_logica} vacío o no asignado.")
+        return datos.decode('utf-8', errors='replace')
 
     def _traducir_direccion(self, direccion_logica):
         direccion_fisica = self.tabla_direcciones.obtener_direccion(direccion_logica)

@@ -69,13 +69,14 @@ class SQLProcessor:
         if len(columnas) != len(datos):
             raise ValueError(f"El número de valores no coincide con las columnas de la tabla '{nombre_tabla}'.")
 
+        datos_serializados = json.dumps(datos)
+        direcciones_fragmentos = self.hdd.escribir_dato(datos_serializados, prefijo=f"fila_{nombre_tabla}")
+
         direccion_logica_tabla, tabla_data = self._buscar_tabla(nombre_tabla)
-        
-        direccion_fila = self.hdd.escribir_dato(json.dumps(datos), prefijo=f"fila_{nombre_tabla}")
-        tabla_data["filas"].append(direccion_fila)
+        tabla_data["filas"].append(direcciones_fragmentos)
 
         self.hdd.escribir_dato(json.dumps(tabla_data), direccion_logica_tabla)
-        print(f"Datos insertados en '{nombre_tabla}': {datos}")
+        print(f"Datos insertados en '{nombre_tabla}' en fragmentos: {direcciones_fragmentos}")
         return True
 
     def seleccionar_datos(self, query):
@@ -88,10 +89,9 @@ class SQLProcessor:
             raise ValueError(f"La tabla '{nombre_tabla}' no existe.")
 
         direccion_logica_tabla, tabla_data = self._buscar_tabla(nombre_tabla)
-
         filas = []
-        for direccion_fila in tabla_data["filas"]:
-            datos = self.hdd.leer_dato(direccion_fila)
+        for direcciones_fragmentos in tabla_data["filas"]:
+            datos = self.hdd.leer_dato(direcciones_fragmentos)
             filas.append(json.loads(datos))
 
         print(f"Datos seleccionados de '{nombre_tabla}': {filas}")
@@ -156,7 +156,6 @@ class SQLProcessor:
             raise ValueError(f"Error al eliminar la tabla: {str(e)}")
 
     def _buscar_tabla(self, nombre_tabla):
-        """Busca una tabla en el almacenamiento por su nombre."""
         for dir_logica in self.hdd.tabla_direcciones.direcciones:
             if dir_logica.startswith(f"tabla_{nombre_tabla}"):
                 datos = json.loads(self.hdd.leer_dato(dir_logica))
