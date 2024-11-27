@@ -1,7 +1,8 @@
 import pygame
 import math
 import sys
-
+from HDDStructure import HDD
+from database_manager import SQLProcessor
 pygame.init()
 WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -19,12 +20,8 @@ incremento_radio = 30
 num_pistas = 0
 num_sectores = 0
 
-class HDD:
-    def __init__(self, num_pistas, num_sectores):
-        self.num_pistas = num_pistas
-        self.num_sectores = num_sectores
 
-def draw_disk():
+def draw_disk(num_pistas, num_sectores):
     for pista in range(num_pistas):
         radio = radio_base + incremento_radio * pista
         pygame.draw.circle(screen, WHITE, center, radio, 1)
@@ -34,6 +31,7 @@ def draw_disk():
             y = center[1] - radio * math.sin(angle)
             pygame.draw.line(screen, WHITE, center, (x, y), 1)
 
+
 def show_start_screen():
     font = pygame.font.Font(None, 74)
     text = font.render("Simulador de Base de Datos", True, WHITE)
@@ -41,6 +39,7 @@ def show_start_screen():
     screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - text.get_height() // 2))
     pygame.display.flip()
     pygame.time.wait(2000)
+
 
 def create_disk_interface():
     global num_pistas, num_sectores
@@ -52,7 +51,6 @@ def create_disk_interface():
     text = ''
     font = pygame.font.Font(None, 32)
 
-    # Título
     title_font = pygame.font.Font(None, 48)
     title_surface = title_font.render("Crear Disco Duro", True, WHITE)
 
@@ -90,7 +88,8 @@ def create_disk_interface():
         screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
         pygame.display.flip()
 
-def query_interface():
+
+def query_interface(hdd, sql_processor):
     global num_pistas, num_sectores
     font = pygame.font.Font(None, 32)
     query_text = ""
@@ -103,7 +102,10 @@ def query_interface():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
-                    print(f"Ejecutar consulta: {query_text}")
+                    try:
+                        sql_processor.procesar_query(query_text)
+                    except Exception as e:
+                        print(f"Error procesando consulta: {e}")
                     query_text = ''
                 elif event.key == pygame.K_BACKSPACE:
                     query_text = query_text[:-1]
@@ -111,7 +113,7 @@ def query_interface():
                     query_text += event.unicode
 
         screen.fill(BLACK)
-        draw_disk()
+        draw_disk(num_pistas, num_sectores)
         
         title_surface = font.render("Ingrese su consulta SQL:", True, WHITE)
         screen.blit(title_surface, (50, HEIGHT - 150))
@@ -123,7 +125,8 @@ def query_interface():
 
 show_start_screen()
 create_disk_interface()
-hdd = HDD(num_pistas, num_sectores)
+hdd = HDD(num_platos=1, num_pistas_por_plato=num_pistas, num_sectores_por_pista=num_sectores, tamano_bytes=1024)
+sql_processor = SQLProcessor(hdd)
 
 while True:
-    query_interface()
+    query_interface(hdd, sql_processor)
