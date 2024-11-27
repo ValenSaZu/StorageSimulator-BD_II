@@ -1,14 +1,11 @@
 from SSD_AdressTable import TablaDirecciones_SSD
 
 class Pagina:
-    #Clase que representa una página en el SSD
-    
     def __init__(self):
         self.datos = ""
         self.ocupado = False
 
 class Bloque:
-    
     def __init__(self, num_paginas):
         self.paginas = [Pagina() for _ in range(num_paginas)]
         self.borrado = False

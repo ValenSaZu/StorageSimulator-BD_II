@@ -1,8 +1,6 @@
 import re
 import json
 import sys
-from HDDStructure import HDD
-from HDD_AddressTable import TablaDirecciones_HDD
 
 class SQLProcessor:
     def __init__(self, hdd):
@@ -19,6 +17,8 @@ class SQLProcessor:
             return self.seleccionar_datos(query)
         elif query.startswith("DELETE"):
             return self.eliminar_datos(query)
+        elif query.startswith("DROP TABLE"):
+            return self.eliminar_tabla(query)
         else:
             raise ValueError("Consulta SQL no válida.")
 
@@ -26,21 +26,32 @@ class SQLProcessor:
         return sum(sys.getsizeof(dato) for dato in datos)
 
     def crear_tabla(self, query):
-        match = re.match(r"CREATE TABLE (\w+)\((.+)\);", query)
+        match = re.match(r"CREATE TABLE\s+(\w+)\s*\((.+?)\);\s*$", query)
         if not match:
             raise ValueError("Consulta CREATE TABLE no válida.")
         
         nombre_tabla = match.group(1)
-        columnas = [col.strip() for col in match.group(2).split(",")]
+        columnas_definidas = match.group(2)
+        columnas = [col.strip() for col in re.split(r',\s*(?![^()]*\))', columnas_definidas)]
 
         if nombre_tabla in self.estructuras_tablas:
             raise ValueError(f"La tabla '{nombre_tabla}' ya existe.")
 
+        try:
+            self._buscar_tabla(nombre_tabla)
+            raise ValueError(f"La tabla '{nombre_tabla}' ya existe en almacenamiento.")
+        except ValueError:
+            pass
+
         self.estructuras_tablas[nombre_tabla] = columnas
         
-        direccion_logica = f"tabla:{nombre_tabla}"
-        self.hdd.escribir_dato(direccion_logica, json.dumps({"columnas": columnas, "filas": []}))
-        print(f"Tabla '{nombre_tabla}' creada con columnas: {columnas}")
+        datos_tabla = json.dumps({
+            "nombre": nombre_tabla,
+            "columnas": columnas,
+            "filas": []
+        })
+        direccion_logica = self.hdd.escribir_dato(datos_tabla, prefijo=f"tabla_{nombre_tabla}")
+        print(f"Tabla '{nombre_tabla}' creada con columnas: {columnas}, dirección lógica: {direccion_logica}")
         return True
 
     def insertar_datos(self, query):
@@ -58,26 +69,13 @@ class SQLProcessor:
         if len(columnas) != len(datos):
             raise ValueError(f"El número de valores no coincide con las columnas de la tabla '{nombre_tabla}'.")
 
-        tamano_datos = self.calcular_tamano(datos)
-        sectores_necesarios = -(-tamano_datos // self.hdd.platos[0].pistas[0].sectores[0].tamano_bytes)
-
-        datos_divididos = []
-        offset = 0
-        for _ in range(sectores_necesarios):
-            tamano_sector = self.hdd.platos[0].pistas[0].sectores[0].tamano_bytes
-            datos_divididos.append(json.dumps(datos)[offset:offset + tamano_sector])
-            offset += tamano_sector
-
-        fila_direccion_logica = []
-        for fragmento in datos_divididos:
-            direccion = self.hdd.tabla_direcciones.agregar_datos(fragmento)
-            fila_direccion_logica.append(direccion)
-
-        direccion_logica = f"tabla:{nombre_tabla}"
-        tabla_data = json.loads(self.hdd.leer_dato(direccion_logica))
-        tabla_data["filas"].append(fila_direccion_logica)
-        self.hdd.escribir_dato(direccion_logica, json.dumps(tabla_data))
+        # Find the table's logical address
+        direccion_logica_tabla, tabla_data = self._buscar_tabla(nombre_tabla)
         
+        direccion_fila = self.hdd.escribir_dato(json.dumps(datos), prefijo=f"fila_{nombre_tabla}")
+        tabla_data["filas"].append(direccion_fila)
+
+        self.hdd.escribir_dato(json.dumps(tabla_data), direccion_logica_tabla)
         print(f"Datos insertados en '{nombre_tabla}': {datos}")
         return True
 
@@ -90,15 +88,12 @@ class SQLProcessor:
         if nombre_tabla not in self.estructuras_tablas:
             raise ValueError(f"La tabla '{nombre_tabla}' no existe.")
 
-        direccion_logica = f"tabla:{nombre_tabla}"
-        tabla_data = json.loads(self.hdd.leer_dato(direccion_logica))
+        direccion_logica_tabla, tabla_data = self._buscar_tabla(nombre_tabla)
 
         filas = []
-        for fila_direccion_logica in tabla_data["filas"]:
-            datos_completos = ""
-            for fragmento_direccion in fila_direccion_logica:
-                datos_completos += self.hdd.leer_dato(fragmento_direccion)
-            filas.append(json.loads(datos_completos))
+        for direccion_fila in tabla_data["filas"]:
+            datos = self.hdd.leer_dato(direccion_fila)
+            filas.append(json.loads(datos))
 
         print(f"Datos seleccionados de '{nombre_tabla}': {filas}")
         return filas
@@ -113,24 +108,59 @@ class SQLProcessor:
         
         if nombre_tabla not in self.estructuras_tablas:
             raise ValueError(f"La tabla '{nombre_tabla}' no existe.")
-        
-        direccion_logica = f"tabla:{nombre_tabla}"
-        tabla_data = json.loads(self.hdd.leer_dato(direccion_logica))
+
+        direccion_logica_tabla, tabla_data = self._buscar_tabla(nombre_tabla)
         
         filas_actualizadas = []
-        for fila in tabla_data["filas"]:
-            datos_completos = ""
-            for fragmento_direccion in fila:
-                datos_completos += self.hdd.leer_dato(fragmento_direccion)
-            
-            datos_json = json.loads(datos_completos)
-            if datos_json[0] == id_a_eliminar:
-                for fragmento_direccion in fila:
-                    self.hdd.tabla_direcciones.liberar_direccion(fragmento_direccion)
+        encontrado = False
+        for direccion_fila in tabla_data["filas"]:
+            datos = json.loads(self.hdd.leer_dato(direccion_fila))
+            if int(datos[0]) == id_a_eliminar:
+                encontrado = True
+                self.hdd.tabla_direcciones.eliminar_direccion(direccion_fila)
             else:
-                filas_actualizadas.append(fila)
-        
+                filas_actualizadas.append(direccion_fila)
+
+        if not encontrado:
+            print(f"No se encontró el ID={id_a_eliminar} en '{nombre_tabla}'.")
+            return False
+
         tabla_data["filas"] = filas_actualizadas
-        self.hdd.escribir_dato(direccion_logica, json.dumps(tabla_data))
+        self.hdd.escribir_dato(json.dumps(tabla_data), direccion_logica_tabla)
         print(f"Datos con id={id_a_eliminar} eliminados de '{nombre_tabla}'.")
         return True
+
+    def eliminar_tabla(self, query):
+        match = re.match(r"DROP TABLE\s+(\w+)\s*;?\s*$", query)
+        if not match:
+            raise ValueError("Consulta DROP TABLE no válida.")
+        
+        nombre_tabla = match.group(1)
+        
+        if nombre_tabla in self.estructuras_tablas:
+            del self.estructuras_tablas[nombre_tabla]
+        
+        try:
+            direccion = None
+            for dir_logica in self.hdd.tabla_direcciones.direcciones.copy():
+                if dir_logica.startswith(f"tabla_{nombre_tabla}"):
+                    direccion = dir_logica
+                    break
+            
+            if direccion:
+                self.hdd.tabla_direcciones.eliminar_direccion(direccion)
+                print(f"Tabla '{nombre_tabla}' eliminada correctamente.")
+                return True
+            else:
+                raise ValueError(f"La tabla '{nombre_tabla}' no existe.")
+        except Exception as e:
+            raise ValueError(f"Error al eliminar la tabla: {str(e)}")
+
+    def _buscar_tabla(self, nombre_tabla):
+        """Busca una tabla en el almacenamiento por su nombre."""
+        for dir_logica in self.hdd.tabla_direcciones.direcciones:
+            if dir_logica.startswith(f"tabla_{nombre_tabla}"):
+                datos = json.loads(self.hdd.leer_dato(dir_logica))
+                if datos.get("nombre") == nombre_tabla:
+                    return dir_logica, datos
+        raise ValueError(f"Tabla '{nombre_tabla}' no encontrada.")
