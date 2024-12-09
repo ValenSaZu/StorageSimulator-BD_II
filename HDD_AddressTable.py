@@ -23,11 +23,6 @@ class TablaDirecciones_HDD:
         self.direcciones[direccion_logica] = direccion_fisica
         self.guardar_tabla()
 
-    def eliminar_direccion(self, direccion_logica):
-        if direccion_logica in self.direcciones:
-            del self.direcciones[direccion_logica]
-            self.guardar_tabla()
-
     def obtener_direccion(self, direccion_logica):
         return self.direcciones.get(direccion_logica, None)
     
