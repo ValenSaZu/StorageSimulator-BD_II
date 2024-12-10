@@ -42,17 +42,38 @@ def show_start_screen():
 
 
 def create_disk_interface():
-    global num_pistas, num_sectores
-    input_box = pygame.Rect(50, 100, 200, 40)
-    color_inactive = LIGHT_BLUE
-    color_active = DARK_BLUE
-    color = color_inactive
-    active = False
-    text = ''
+    global num_platos, num_pistas, num_sectores, tamano_bytes
+    inputs = {"platos": "", "pistas": "", "sectores": "", "bytes": ""}
+    active_input = None
+    colors = {"platos": LIGHT_BLUE, "pistas": LIGHT_BLUE, "sectores": LIGHT_BLUE, "bytes": LIGHT_BLUE}
+    
     font = pygame.font.Font(None, 32)
-
     title_font = pygame.font.Font(None, 48)
-    title_surface = title_font.render("Crear Disco Duro", True, BLACK)
+    label_font = pygame.font.Font(None, 28)
+
+    labels = {
+        "platos": label_font.render("Número de Platos:", True, BLACK),
+        "pistas": label_font.render("Número de Pistas:", True, BLACK),
+        "sectores": label_font.render("Número de Sectores:", True, BLACK),
+        "bytes": label_font.render("Tamaño (bytes/sector):", True, BLACK)
+    }
+
+    input_boxes = {
+        "platos": pygame.Rect(0, 0, 250, 40),
+        "pistas": pygame.Rect(0, 0, 250, 40),
+        "sectores": pygame.Rect(0, 0, 250, 40),
+        "bytes": pygame.Rect(0, 0, 250, 40),
+    }
+    configure_button = pygame.Rect(0, 0, 200, 50)
+
+    center_x = WIDTH // 2
+    spacing_y = 70
+    start_y = HEIGHT // 2 - len(input_boxes) * spacing_y // 2 - 50
+
+    y_positions = [start_y + i * spacing_y for i in range(len(input_boxes))]
+    for i, key in enumerate(input_boxes):
+        input_boxes[key].center = (center_x, y_positions[i])
+    configure_button.center = (center_x, y_positions[-1] + 80)
 
     while True:
         for event in pygame.event.get():
@@ -60,43 +81,45 @@ def create_disk_interface():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if input_box.collidepoint(event.pos):
-                    active = not active
-                else:
-                    active = False
-                color = color_active if active else color_inactive
-            if event.type == pygame.KEYDOWN:
-                if active:
-                    if event.key == pygame.K_RETURN:
-                        try:
-                            num_pistas, num_sectores = map(int, text.split(","))
-                            if num_pistas <= 0 or num_sectores <= 0:
-                                raise ValueError("Los números deben ser mayores que cero.")
-                            return
-                        except Exception as e:
-                            print(f"Error: {e}")
-                            text = ''
-                    elif event.key == pygame.K_BACKSPACE:
-                        text = text[:-1]
+                for key, box in input_boxes.items():
+                    if box.collidepoint(event.pos):
+                        active_input = key
+                        colors[key] = DARK_BLUE
                     else:
-                        text += event.unicode
+                        colors[key] = LIGHT_BLUE
+                if configure_button.collidepoint(event.pos):
+                    try:
+                        num_platos = int(inputs["platos"])
+                        num_pistas = int(inputs["pistas"])
+                        num_sectores = int(inputs["sectores"])
+                        tamano_bytes = int(inputs["bytes"])
+                        return HDD(num_platos, num_pistas, num_sectores, tamano_bytes)
+                    except ValueError:
+                        print("Error: Todos los valores deben ser enteros positivos.")
+            if event.type == pygame.KEYDOWN and active_input:
+                if event.key == pygame.K_BACKSPACE:
+                    inputs[active_input] = inputs[active_input][:-1]
+                else:
+                    inputs[active_input] += event.unicode
 
         screen.fill(WHITE)
-        screen.blit(title_surface, (50, 50))
-        pygame.draw.rect(screen, color, input_box, 2)
-        txt_surface = font.render(text, True, color)
-        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
-        pygame.display.flip()
 
-def query_interface(hdd, sql_processor):
-        screen.fill(WHITE)
-        draw_disk(num_pistas, num_sectores)
+        title_surface = title_font.render("Crear Disco Duro", True, BLACK)
+        screen.blit(title_surface, (center_x - title_surface.get_width() // 2, start_y - 100))
+
+        for i, (key, box) in enumerate(input_boxes.items()):
+            pygame.draw.rect(screen, colors[key], box, border_radius=10)
+            txt_surface = font.render(inputs[key], True, BLACK)
+            label_surface = labels[key]
+            screen.blit(label_surface, (center_x - box.width // 2 - label_surface.get_width() - 10, box.y + 10))
+            screen.blit(txt_surface, (box.x + 10, box.y + 5))
+
+        pygame.draw.rect(screen, LIGHT_BLUE, configure_button, border_radius=15)
+        configure_text = font.render("Configurar", True, BLACK)
+        screen.blit(configure_text, (configure_button.x + configure_button.width // 2 - configure_text.get_width() // 2,
+                                     configure_button.y + configure_button.height // 2 - configure_text.get_height() // 2))
 
         pygame.display.flip()
 
 show_start_screen()
 create_disk_interface()
-hdd = HDD(num_platos=1, num_pistas_por_plato=num_pistas, num_sectores_por_pista=num_sectores, tamano_bytes=1024)
-
-while True:
-    query_interface(hdd, sql_processor)

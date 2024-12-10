@@ -60,7 +60,11 @@ class HDD:
     def leer_dato(self, direcciones_logicas):
         datos = b""
         for direccion_logica in direcciones_logicas:
-            plato_index, pista_index, sector_index = self._traducir_direccion(direccion_logica)
+            try:
+                plato_index, pista_index, sector_index = self._traducir_direccion(direccion_logica)
+            except ValueError as e:
+                raise ValueError(f"Error en la dirección lógica {direccion_logica}: {e}")
+
             plato = self.platos[plato_index]
             sector = plato.pistas[pista_index].sectores[sector_index]
             if sector.ocupado:
