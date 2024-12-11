@@ -239,7 +239,7 @@ def upload_csv_interface(hdd, admin_tablas):
             for row_number, row in enumerate(reader, start=1):
                 try:
                     cleaned_row = {
-                        k.strip().strip('"'): v.strip().strip('"') if isinstance(v, str) and v else None
+                        k.strip().strip('"'): v.strip().strip('"') if v is not None else None
                         for k, v in row.items()
                     }
                     print(f"Fila {row_number} procesada: {cleaned_row}")
@@ -251,19 +251,24 @@ def upload_csv_interface(hdd, admin_tablas):
                         if value is None or value == "":
                             raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
 
-                        value = value.strip() if isinstance(value, str) else value
+                        if isinstance(value, str):
+                            value = value.strip()
 
                         if column_type == "int":
                             try:
-                                value = int(value.replace(",", " ").strip())
-                            except ValueError:
-                                raise ValueError(f"El valor para '{column_name}' debe ser un entero. Valor recibido: '{value}' en la fila {row_number}.")
+                                value_cleaned = ''.join(filter(str.isdigit, value))
+                                value = int(value_cleaned)
+                                print(f"Convirtiendo '{value_cleaned}' a entero para la columna '{column_name}'.")
+                            except ValueError as e:
+                                raise ValueError(f"Error al convertir '{value}' a entero en la fila {row_number}, columna '{column_name}': {e}")
                         
                         elif column_type == "float":
                             try:
-                                value = float(value.replace(",", " ").strip())
-                            except ValueError:
-                                raise ValueError(f"El valor para '{column_name}' debe ser un flotante. Valor recibido: '{value}' en la fila {row_number}.")
+                                value_cleaned = value.replace(",", "").strip()
+                                value = float(value_cleaned)
+                                print(f"Convirtiendo '{value_cleaned}' a flotante para la columna '{column_name}'.")
+                            except ValueError as e:
+                                raise ValueError(f"Error al convertir '{value}' a flotante en la fila {row_number}, columna '{column_name}': {e}")
                         
                         elif column_type == "varchar":
                             if len(value) > column_size:
