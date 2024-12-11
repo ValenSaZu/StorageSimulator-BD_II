@@ -25,7 +25,7 @@ class HDD:
         self.platos = [Plato(num_pistas_por_plato, num_sectores_por_pista, tamano_bytes) for _ in range(num_platos)]
         self.tabla_direcciones = TablaDirecciones_HDD()
         self.contador_direcciones = 0
-        self.index_map = {} 
+        self.index_map = {}
 
     def generar_direccion_logica(self, prefijo):
         self.contador_direcciones += 1
@@ -101,6 +101,7 @@ class HDD:
             datos = json.loads(contenido)
         except json.JSONDecodeError:
             datos = contenido
+
         ubicaciones = []
         for direccion_logica in direcciones_fragmentos:
             plato_index, pista_index, sector_index = self._traducir_direccion(direccion_logica)

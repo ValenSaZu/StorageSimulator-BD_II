@@ -4,23 +4,14 @@ class Tabla:
         self.columnas = []
         self.datos = []
 
-    def agregar_columna(self, nombre, tipo, tamano=None, precision=None, escala=None):
+    def agregar_columna(self, nombre, tipo, tamano=None):
         tipos_validos = ["int", "bigint", "float", "decimal", "varchar", "text", "date", "datetime", "boolean"]
         if tipo not in tipos_validos:
             raise ValueError(f"Tipo de dato '{tipo}' no soportado.")
-        
-        if tipo == "varchar":
-            if tamano is None or tamano <= 0:
-                raise ValueError("El tipo 'varchar' requiere un tamaño mayor a 0.")
-            self.columnas.append((nombre, tipo, tamano))
-        elif tipo == "decimal":
-            if precision is None or escala is None or precision <= 0 or escala < 0 or escala > precision:
-                raise ValueError("El tipo 'decimal' requiere valores válidos para precisión y escala.")
-            self.columnas.append((nombre, tipo, precision, escala))
-        else:
-            self.columnas.append((nombre, tipo))
-        
-        print(f"Columna '{nombre}' agregada con tipo '{tipo}' y tamaño '{tamano or ''}' precisión '{precision or ''}' escala '{escala or ''}'.")
+        if tipo in ["varchar", "decimal"] and (tamano is None or tamano <= 0):
+            raise ValueError(f"El tipo '{tipo}' requiere un tamaño mayor a 0.")
+        self.columnas.append((nombre, tipo, tamano))
+        print(f"Columna '{nombre}' agregada con tipo '{tipo}' y tamaño '{tamano}'.")
 
     def insertar_dato(self, datos):
         if len(datos) != len(self.columnas):
