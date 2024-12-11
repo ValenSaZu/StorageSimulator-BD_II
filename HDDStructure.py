@@ -102,11 +102,11 @@ class HDD:
                 for sector_index, sector in enumerate(pista.sectores):
                     if sector.ocupado:
                         try:
-                            dato = eval(sector.datos)
-                            if isinstance(dato, dict) and dato.get("Index") == dato_id:
+                            dato = json.loads(sector.datos)
+                            if isinstance(dato, dict) and str(dato.get("Index")) == dato_id_str:
                                 datos_encontrados["datos"].append(dato)
                                 datos_encontrados["ubicaciones"].append((plato_index, pista_index, sector_index))
-                        except (SyntaxError, ValueError):
+                        except (json.JSONDecodeError, ValueError):
                             continue
 
         return datos_encontrados if datos_encontrados["datos"] else None

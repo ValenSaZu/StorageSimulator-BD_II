@@ -1,10 +1,10 @@
 import pygame
 import math
 
-def draw_disk(screen, hdd, start_x, start_y, disk_radius):
+def draw_disk(screen, plato, start_x, start_y, disk_radius):
     center_x, center_y = start_x, start_y
-    num_pistas = hdd.num_pistas_por_plato
-    num_sectores = hdd.num_sectores_por_pista
+    num_pistas = len(plato.pistas)
+    num_sectores = len(plato.pistas[0].sectores)
     sector_angle = 360 / num_sectores
 
     for pista in range(num_pistas):
@@ -17,7 +17,7 @@ def draw_disk(screen, hdd, start_x, start_y, disk_radius):
             end_y = center_y + track_radius * math.sin(start_angle)
             pygame.draw.line(screen, (0, 0, 0), (center_x, center_y), (end_x, end_y), 1)
 
-            sector_obj = hdd.platos[0].pistas[pista].sectores[sector]
+            sector_obj = plato.pistas[pista].sectores[sector]
             color = (0, 255, 0) if sector_obj.ocupado else (255, 0, 0)
             pygame.draw.arc(
                 screen,

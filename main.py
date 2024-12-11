@@ -16,6 +16,8 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 LIGHT_BLUE = (100, 200, 255)
 
+plato_actual = 0
+
 def show_start_screen():
     font = pygame.font.Font(None, 74)
     text = font.render("Simulador de Base de Datos", True, BLACK)
@@ -24,8 +26,16 @@ def show_start_screen():
     pygame.display.flip()
     pygame.time.wait(2000)
 
-def draw_disk_and_buttons(hdd):
-    draw_disk(screen, hdd, WIDTH // 2 + 300, HEIGHT // 2 + 50, 200)
+def draw_disk_and_buttons(hdd, plato_actual):
+    draw_disk(screen, hdd.platos[plato_actual], WIDTH // 2 + 300, HEIGHT // 2, 200)
+
+    prev_plato_button = pygame.Rect(WIDTH // 2 + 100, HEIGHT // 2 + 280, 150, 40)
+    next_plato_button = pygame.Rect(WIDTH // 2 + 350, HEIGHT // 2 + 280, 150, 40)
+
+    draw_button(screen, "Plato Anterior", prev_plato_button, LIGHT_BLUE, BLACK)
+    draw_button(screen, "Siguiente Plato", next_plato_button, LIGHT_BLUE, BLACK)
+
+    return prev_plato_button, next_plato_button
 
 def create_disk_interface():
     platos_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 150, 250, 40)
@@ -75,6 +85,8 @@ def create_disk_interface():
         pygame.display.flip()
 
 def main_menu(hdd, admin_tablas):
+    global plato_actual
+
     create_table_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 - 100, 200, 50)
     add_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2, 200, 50)
     search_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 + 100, 200, 50)
@@ -86,12 +98,18 @@ def main_menu(hdd, admin_tablas):
                 sys.exit()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
+                prev_plato_button, next_plato_button = draw_disk_and_buttons(hdd, plato_actual)
+
                 if create_table_button.collidepoint(event.pos):
                     create_table_interface(hdd, admin_tablas)
                 elif add_data_button.collidepoint(event.pos):
                     upload_csv_interface(hdd, admin_tablas)
                 elif search_data_button.collidepoint(event.pos):
                     search_data_interface(hdd, admin_tablas)
+                elif prev_plato_button.collidepoint(event.pos):
+                    plato_actual = (plato_actual - 1) % hdd.num_platos
+                elif next_plato_button.collidepoint(event.pos):
+                    plato_actual = (plato_actual + 1) % hdd.num_platos
 
         screen.fill(WHITE)
 
@@ -99,7 +117,9 @@ def main_menu(hdd, admin_tablas):
         draw_button(screen, "Añadir Datos", add_data_button, LIGHT_BLUE, BLACK)
         draw_button(screen, "Buscar Dato", search_data_button, LIGHT_BLUE, BLACK)
 
-        draw_disk_and_buttons(hdd)
+        prev_plato_button, next_plato_button = draw_disk_and_buttons(hdd, plato_actual)
+
+        draw_label(screen, f"Plato Actual: {plato_actual + 1} / {hdd.num_platos}", WIDTH // 2 + 200, HEIGHT // 2 + 240)
 
         pygame.display.flip()
 
@@ -227,7 +247,7 @@ def create_table_interface(hdd, admin_tablas):
                 draw_label(screen, f"{column_name} ({column_type})", WIDTH // 2 - 300 + offset_x, y_offset)
             y_offset += 30
 
-        draw_disk_and_buttons(hdd)
+        draw_disk_and_buttons(hdd, plato_actual)
         pygame.display.flip()
 
 def upload_csv_interface(hdd, admin_tablas):
@@ -332,7 +352,6 @@ def search_data_interface(hdd, admin_tablas):
     search_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 100, 250, 40)
     search_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
     cancel_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 50)
-    error_message = None
 
     while True:
         for event in pygame.event.get():
@@ -352,28 +371,22 @@ def search_data_interface(hdd, admin_tablas):
                     if selected_table:
                         table = admin_tablas.obtener_tabla(selected_table)
                         search_value = search_box.get_text()
-                        id_columns = ["Index", "ID", "Indice"]
-                        search_column = next((col[0] for col in table.columnas if col[0] in id_columns), None)
-
-                        if not search_column:
-                            error_message = "La tabla seleccionada no tiene una columna de identificación válida."
-                            continue
 
                         try:
                             search_value = int(search_value)
-                            result = table.buscar_dato(search_column, search_value)
+                            result = table.buscar_dato("Index", search_value)
                             if result:
                                 print(f"Dato encontrado en la tabla: {result}")
                                 hdd_data = hdd.obtener_datos_completos(search_value)
-                                if hdd_data["datos"]:
+                                if hdd_data:
                                     print(f"Datos guardados en el HDD: {hdd_data['datos']}")
                                     print(f"Ubicaciones en el HDD (plato, pista, sector): {hdd_data['ubicaciones']}")
                                 else:
-                                    print("Dato encontrado pero no ubicado en el HDD.")
+                                    print("Dato encontrado en la tabla, pero no ubicado en el HDD.")
                             else:
-                                error_message = "Dato no encontrado."
+                                print("Dato no encontrado en la tabla.")
                         except ValueError:
-                            error_message = "Por favor, ingrese un ID válido (debe ser un número entero)."
+                            print("Por favor, ingrese un ID válido (debe ser un número entero).")
                         return
 
                 if cancel_button.collidepoint(event.pos):
@@ -393,10 +406,7 @@ def search_data_interface(hdd, admin_tablas):
 
         draw_button(screen, "Cancelar", cancel_button, LIGHT_BLUE, BLACK)
 
-        if error_message:
-            draw_label(screen, error_message, WIDTH // 2 - 300, HEIGHT // 2 + 200, color=(255, 0, 0))
-
-        draw_disk_and_buttons(hdd)
+        draw_disk_and_buttons(hdd, 0)
         pygame.display.flip()
 
 def main():
