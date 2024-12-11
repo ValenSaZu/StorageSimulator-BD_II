@@ -38,6 +38,9 @@ class HDD:
         direcciones_fragmentos = []
 
         for fragmento in fragmentos:
+            if len(fragmento) > tamano_sector:
+                raise ValueError(f"El fragmento excede el tamaño permitido de {tamano_sector} bytes.")
+
             direccion_logica = self.generar_direccion_logica(prefijo)
             for plato_index, plato in enumerate(self.platos):
                 for pista_index, pista in enumerate(plato.pistas):
@@ -92,3 +95,24 @@ class HDD:
                         return plato_index, pista_index, sector_index
         print("Dato no encontrado en ningún sector.")
         return None
+    def obtener_datos_completos(self, dato_id):
+        dato_str = str(dato_id)
+        datos_asociados = []
+        ubicaciones = []
+
+        for plato_index, plato in enumerate(self.platos):
+            for pista_index, pista in enumerate(plato.pistas):
+                for sector_index, sector in enumerate(pista.sectores):
+                    if sector.datos == dato_str:
+                        ubicacion = (plato_index, pista_index, sector_index)
+                        ubicaciones.append(ubicacion)
+                        datos_asociados.append(sector.datos)
+
+        if not ubicaciones:
+            print("Dato no encontrado en ningún sector.")
+            return None
+
+        return {
+            "datos": datos_asociados,
+            "ubicaciones": ubicaciones
+        }

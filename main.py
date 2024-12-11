@@ -198,8 +198,6 @@ def create_table_interface(hdd, admin_tablas):
         draw_disk_and_buttons(hdd)
         pygame.display.flip()
 
-
-
 def upload_csv_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
     if not tablas:
@@ -229,7 +227,6 @@ def upload_csv_interface(hdd, admin_tablas):
             csv_headers = [header.strip().strip('"').strip(';') for header in reader.fieldnames]
             print(f"Encabezados del archivo CSV (limpiados): {csv_headers}")
 
-            # Si no se ha seleccionado una tabla, tomamos la primera disponible
             if not selected_table:
                 selected_table = tablas[0]
 
@@ -242,7 +239,6 @@ def upload_csv_interface(hdd, admin_tablas):
 
             for row_number, row in enumerate(reader, start=1):
                 try:
-                    # Limpieza inicial de la fila
                     cleaned_row = {
                         k.strip().strip('"'): v.strip().strip('"') if isinstance(v, str) and v else None
                         for k, v in row.items()
@@ -256,7 +252,6 @@ def upload_csv_interface(hdd, admin_tablas):
                         if value is None or value == "":
                             raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
 
-                        # Limpia el valor
                         if isinstance(value, str):
                             value = value.strip()
 
@@ -282,23 +277,17 @@ def upload_csv_interface(hdd, admin_tablas):
 
                         data[column_name] = value
 
-                    # Convertir el diccionario data en una lista en el orden de las columnas
                     row_values = []
                     for (col_name, col_type, col_size) in table.columnas:
                         row_values.append(data[col_name])
 
-                    # Inserta los datos en la tabla como una lista
                     table.insertar_dato(row_values)
 
-                    # Escribe los datos en el HDD
                     hdd.escribir_dato(str(data), prefijo=selected_table)
                 except Exception as e:
                     print(f"Error al procesar la fila {row_number}: {e}")
     except Exception as e:
         print(f"Error al procesar el archivo CSV: {e}")
-
-
-
 
 def search_data_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
@@ -329,26 +318,41 @@ def search_data_interface(hdd, admin_tablas):
                     for i, button in enumerate(table_buttons):
                         if button.collidepoint(event.pos):
                             selected_table = tablas[i]
+                            print(f"Tabla seleccionada: {selected_table}")
 
                 if search_button.collidepoint(event.pos):
                     if selected_table:
                         table = admin_tablas.obtener_tabla(selected_table)
                         search_value = search_box.get_text()
+
+                        id_columns = ["ID", "Index", "Indice"]
+                        search_column = next((col[0] for col in table.columnas if col[0] in id_columns), None)
+
+                        if not search_column:
+                            print("La tabla seleccionada no tiene una columna de identificación válida.")
+                            return
+
                         try:
                             search_value = int(search_value)
-                            result = table.buscar_dato("ID", search_value)
+                            result = table.buscar_dato(search_column, search_value)
+
                             if result:
                                 print(f"Dato encontrado: {result}")
-                                hdd_address = hdd.obtener_direccion_fisica(result)
-                                if hdd_address:
-                                    print(f"Ubicación en HDD: Plato {hdd_address[0]}, Pista {hdd_address[1]}, Sector {hdd_address[2]}")
-                                    draw_label(screen, f"Ubicación: Plato {hdd_address[0]}, Pista {hdd_address[1]}, Sector {hdd_address[2]}", WIDTH // 2 - 300, HEIGHT // 2 + 100)
+                                hdd_data = hdd.obtener_datos_completos(search_value)
+                                if hdd_data:
+                                    print("Datos asociados en el HDD:")
+                                    for i, dato in enumerate(hdd_data["datos"]):
+                                        ubicacion = hdd_data["ubicaciones"][i]
+                                        print(f"  - Dato: {dato}, Ubicación: Plato {ubicacion[0]}, Pista {ubicacion[1]}, Sector {ubicacion[2]}")
+
+                                    draw_label(screen, f"Dato: {result}", WIDTH // 2 - 300, HEIGHT // 2 + 100)
+                                    draw_label(screen, f"Ubicaciones: {hdd_data['ubicaciones']}", WIDTH // 2 - 300, HEIGHT // 2 + 140)
                                 else:
-                                    print("Dato no encontrado en el HDD.")
+                                    print("Dato encontrado pero no ubicado en el HDD.")
                             else:
                                 print("Dato no encontrado.")
                         except ValueError:
-                            print("Por favor, ingrese un ID válido.")
+                            print("Por favor, ingrese un ID válido (debe ser un número entero).")
                         return
 
                 if cancel_button.collidepoint(event.pos):
@@ -367,9 +371,7 @@ def search_data_interface(hdd, admin_tablas):
             draw_button(screen, "Buscar", search_button, LIGHT_BLUE, BLACK)
 
         draw_button(screen, "Cancelar", cancel_button, LIGHT_BLUE, BLACK)
-
         draw_disk_and_buttons(hdd)
-
         pygame.display.flip()
 
 def main():
