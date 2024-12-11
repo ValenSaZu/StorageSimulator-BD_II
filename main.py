@@ -5,6 +5,7 @@ from tkinter import Tk, filedialog
 from HDDStructure import HDD
 from UIComponents import InputBox, draw_button, draw_label, draw_disk
 from TableManager import AdministradorTablas, Tabla
+import re
 
 pygame.init()
 WIDTH, HEIGHT = 1200, 800
@@ -197,6 +198,8 @@ def create_table_interface(hdd, admin_tablas):
         draw_disk_and_buttons(hdd)
         pygame.display.flip()
 
+
+
 def upload_csv_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
     if not tablas:
@@ -226,6 +229,7 @@ def upload_csv_interface(hdd, admin_tablas):
             csv_headers = [header.strip().strip('"').strip(';') for header in reader.fieldnames]
             print(f"Encabezados del archivo CSV (limpiados): {csv_headers}")
 
+            # Si no se ha seleccionado una tabla, tomamos la primera disponible
             if not selected_table:
                 selected_table = tablas[0]
 
@@ -238,8 +242,9 @@ def upload_csv_interface(hdd, admin_tablas):
 
             for row_number, row in enumerate(reader, start=1):
                 try:
+                    # Limpieza inicial de la fila
                     cleaned_row = {
-                        k.strip().strip('"'): v.strip().strip('"') if v is not None else None
+                        k.strip().strip('"'): v.strip().strip('"') if isinstance(v, str) and v else None
                         for k, v in row.items()
                     }
                     print(f"Fila {row_number} procesada: {cleaned_row}")
@@ -251,37 +256,49 @@ def upload_csv_interface(hdd, admin_tablas):
                         if value is None or value == "":
                             raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
 
+                        # Limpia el valor
                         if isinstance(value, str):
                             value = value.strip()
 
                         if column_type == "int":
+                            cleaned_value = "".join(ch for ch in value if ch.isdigit() or ch == '-')
+                            if cleaned_value == "":
+                                raise ValueError(f"El valor para '{column_name}' debe ser un entero. Valor recibido: '{value}' en la fila {row_number}.")
                             try:
-                                value_cleaned = ''.join(filter(str.isdigit, value))
-                                value = int(value_cleaned)
-                                print(f"Convirtiendo '{value_cleaned}' a entero para la columna '{column_name}'.")
-                            except ValueError as e:
-                                raise ValueError(f"Error al convertir '{value}' a entero en la fila {row_number}, columna '{column_name}': {e}")
-                        
+                                value = int(cleaned_value)
+                            except ValueError:
+                                raise ValueError(f"El valor para '{column_name}' debe ser un entero. Valor recibido: '{value}' en la fila {row_number}.")
+
                         elif column_type == "float":
+                            cleaned_value = value.replace(",", "").strip()
                             try:
-                                value_cleaned = value.replace(",", "").strip()
-                                value = float(value_cleaned)
-                                print(f"Convirtiendo '{value_cleaned}' a flotante para la columna '{column_name}'.")
-                            except ValueError as e:
-                                raise ValueError(f"Error al convertir '{value}' a flotante en la fila {row_number}, columna '{column_name}': {e}")
-                        
+                                value = float(cleaned_value)
+                            except ValueError:
+                                raise ValueError(f"El valor para '{column_name}' debe ser un flotante. Valor recibido: '{value}' en la fila {row_number}.")
+
                         elif column_type == "varchar":
                             if len(value) > column_size:
                                 raise ValueError(f"El valor en {column_name} excede el tamaño permitido de {column_size}.")
 
                         data[column_name] = value
 
-                    table.insertar_dato(data)
+                    # Convertir el diccionario data en una lista en el orden de las columnas
+                    row_values = []
+                    for (col_name, col_type, col_size) in table.columnas:
+                        row_values.append(data[col_name])
+
+                    # Inserta los datos en la tabla como una lista
+                    table.insertar_dato(row_values)
+
+                    # Escribe los datos en el HDD
                     hdd.escribir_dato(str(data), prefijo=selected_table)
                 except Exception as e:
                     print(f"Error al procesar la fila {row_number}: {e}")
     except Exception as e:
         print(f"Error al procesar el archivo CSV: {e}")
+
+
+
 
 def search_data_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
