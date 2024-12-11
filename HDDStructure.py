@@ -1,4 +1,5 @@
 from HDD_AddressTable import TablaDirecciones_HDD
+import json
 
 class Sector:
     def __init__(self, tamano_bytes):
@@ -30,7 +31,8 @@ class HDD:
         return f"{prefijo}:{self.contador_direcciones}"
 
     def escribir_dato(self, datos, prefijo="dato"):
-        datos_bytes = datos.encode('utf-8')
+        datos_json = json.dumps(datos)
+        datos_bytes = datos_json.encode('utf-8')
         tamano_datos = len(datos_bytes)
         tamano_sector = self.platos[0].pistas[0].sectores[0].tamano_bytes
 
@@ -95,24 +97,31 @@ class HDD:
                         return plato_index, pista_index, sector_index
         print("Dato no encontrado en ningún sector.")
         return None
+
     def obtener_datos_completos(self, dato_id):
-        dato_str = str(dato_id)
-        datos_asociados = []
+        """
+        Retorna los datos completos asociados al ID dado junto con las ubicaciones físicas.
+        """
+        datos_completos = []
         ubicaciones = []
 
         for plato_index, plato in enumerate(self.platos):
             for pista_index, pista in enumerate(plato.pistas):
                 for sector_index, sector in enumerate(pista.sectores):
-                    if sector.datos == dato_str:
-                        ubicacion = (plato_index, pista_index, sector_index)
-                        ubicaciones.append(ubicacion)
-                        datos_asociados.append(sector.datos)
+                    if sector.ocupado:
+                        try:
+                            dato = json.loads(sector.datos)
+                            if dato.get("Index") == dato_id:
+                                datos_completos.append(dato)
+                                ubicaciones.append((plato_index, pista_index, sector_index))
+                        except json.JSONDecodeError:
+                            continue
 
-        if not ubicaciones:
+        if not datos_completos:
             print("Dato no encontrado en ningún sector.")
             return None
 
         return {
-            "datos": datos_asociados,
+            "datos": datos_completos,
             "ubicaciones": ubicaciones
         }

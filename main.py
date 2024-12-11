@@ -325,6 +325,7 @@ def search_data_interface(hdd, admin_tablas):
                         table = admin_tablas.obtener_tabla(selected_table)
                         search_value = search_box.get_text()
 
+                        # Buscar la columna de identificación
                         id_columns = ["ID", "Index", "Indice"]
                         search_column = next((col[0] for col in table.columnas if col[0] in id_columns), None)
 
@@ -337,8 +338,9 @@ def search_data_interface(hdd, admin_tablas):
                             result = table.buscar_dato(search_column, search_value)
 
                             if result:
-                                print(f"Dato encontrado: {result}")
+                                print(f"Dato encontrado en la tabla: {result}")
                                 hdd_data = hdd.obtener_datos_completos(search_value)
+
                                 if hdd_data:
                                     print("Datos asociados en el HDD:")
                                     for i, dato in enumerate(hdd_data["datos"]):
