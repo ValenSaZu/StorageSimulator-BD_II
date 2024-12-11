@@ -5,9 +5,10 @@ class Tabla:
         self.datos = []     
 
     def agregar_columna(self, nombre, tipo, tamano=None):
-        if tipo not in ["int", "float", "varchar"]:
+        tipos_permitidos = ["int", "bigint", "float", "decimal", "varchar", "text", "date", "datetime", "boolean"]
+        if tipo not in tipos_permitidos:
             raise ValueError(f"Tipo de dato '{tipo}' no soportado.")
-        if tipo == "varchar" and (tamano is None or tamano <= 0):
+        if tipo in ["varchar"] and (tamano is None or tamano <= 0):
             raise ValueError("El tipo 'varchar' requiere un tamaño mayor a 0.")
         self.columnas.append((nombre, tipo, tamano))
         print(f"Columna '{nombre}' agregada con tipo '{tipo}' y tamaño '{tamano}'.")
@@ -15,31 +16,40 @@ class Tabla:
     def insertar_dato(self, datos):
         if len(datos) != len(self.columnas):
             raise ValueError("La cantidad de datos no coincide con las columnas.")
-        
+
         registro = {}
         for (nombre, tipo, tamano), valor in zip(self.columnas, datos):
             if tipo == "int":
                 if not isinstance(valor, int):
                     raise ValueError(f"El valor para '{nombre}' debe ser un entero.")
+            elif tipo == "bigint":
+                if not isinstance(valor, int):
+                    raise ValueError(f"El valor para '{nombre}' debe ser un entero grande.")
             elif tipo == "float":
-                if not isinstance(valor, float):
+                if not isinstance(valor, (float, int)):
                     raise ValueError(f"El valor para '{nombre}' debe ser un flotante.")
+            elif tipo == "decimal":
+                if not re.match(r"^\d+(\.\d+)?$", str(valor)):
+                    raise ValueError(f"El valor para '{nombre}' debe ser decimal.")
             elif tipo == "varchar":
-                if not isinstance(valor, str):
-                    raise ValueError(f"El valor para '{nombre}' debe ser una cadena.")
-                if len(valor) > tamano:
+                if not isinstance(valor, str) or len(valor) > tamano:
                     raise ValueError(f"El valor para '{nombre}' excede el tamaño máximo de {tamano}.")
+            elif tipo == "text":
+                if not isinstance(valor, str):
+                    raise ValueError(f"El valor para '{nombre}' debe ser texto.")
+            elif tipo == "date":
+                if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(valor)):
+                    raise ValueError(f"El valor para '{nombre}' debe ser una fecha (YYYY-MM-DD).")
+            elif tipo == "datetime":
+                if not re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", str(valor)):
+                    raise ValueError(f"El valor para '{nombre}' debe ser fecha y hora (YYYY-MM-DD HH:MM:SS).")
+            elif tipo == "boolean":
+                if not isinstance(valor, bool):
+                    raise ValueError(f"El valor para '{nombre}' debe ser booleano (True o False).")
             registro[nombre] = valor
 
         self.datos.append(registro)
         print(f"Dato insertado en la tabla '{self.nombre}': {registro}")
-
-    def buscar_dato(self, clave, valor):
-        for dato in self.datos:
-            if dato.get(clave) == valor:
-                return dato
-        return None
-
 
 class AdministradorTablas:
     def __init__(self):

@@ -104,18 +104,23 @@ def main_menu(hdd, admin_tablas):
         pygame.display.flip()
 
 def create_table_interface(hdd, admin_tablas):
-    table_name_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 200, 250, 40)
-    column_name_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 140, 250, 40)
-    varchar_length_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2, 250, 40)
+    offset_x = -200
+    offset_y = -100
 
-    tipos_datos = ["int", "float", "varchar"]
+    table_name_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 200 + offset_y, 250, 40)
+    column_name_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 140 + offset_y, 250, 40)
+    varchar_length_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 50 + offset_y, 250, 40)
+    decimal_precision_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 + 10 + offset_y, 120, 40)
+    decimal_scale_box = InputBox(WIDTH // 2 + 25 + offset_x, HEIGHT // 2 + 10 + offset_y, 120, 40)
+
+    tipos_datos = ["int", "bigint", "float", "decimal", "varchar", "text", "date", "datetime", "boolean"]
     tipo_buttons = [
-        pygame.Rect(WIDTH // 2 - 125, HEIGHT // 2 - 70 + i * 50, 250, 40)
+        pygame.Rect(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 70 + offset_y + i * 50, 250, 40)
         for i in range(len(tipos_datos))
     ]
 
-    add_column_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 100, 200, 50)
-    finalize_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 160, 200, 50)
+    add_column_button = pygame.Rect(WIDTH // 2 - 250 + offset_x, HEIGHT // 2 + 100 + offset_y, 200, 50)
+    finalize_button = pygame.Rect(WIDTH // 2 - 250 + offset_x, HEIGHT // 2 + 160 + offset_y, 200, 50)
 
     column_list = []
     selected_tipo = None
@@ -129,6 +134,8 @@ def create_table_interface(hdd, admin_tablas):
             table_name_box.handle_event(event)
             column_name_box.handle_event(event)
             varchar_length_box.handle_event(event)
+            decimal_precision_box.handle_event(event)
+            decimal_scale_box.handle_event(event)
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 for i, button in enumerate(tipo_buttons):
@@ -150,6 +157,22 @@ def create_table_interface(hdd, admin_tablas):
                                     print("El tamaño de 'varchar' debe ser mayor a 0.")
                             except ValueError:
                                 print("El tamaño de 'varchar' debe ser un número entero válido.")
+
+                        elif selected_tipo == "decimal":
+                            try:
+                                precision = int(decimal_precision_box.get_text())
+                                scale = int(decimal_scale_box.get_text())
+                                if precision > 0 and 0 <= scale <= precision:
+                                    column_list.append((column_name, (selected_tipo, precision, scale)))
+                                    column_name_box.text = ""
+                                    decimal_precision_box.text = ""
+                                    decimal_scale_box.text = ""
+                                    selected_tipo = None
+                                else:
+                                    print("La precisión debe ser mayor a 0 y la escala debe ser entre 0 y la precisión.")
+                            except ValueError:
+                                print("La precisión y escala de 'decimal' deben ser números enteros.")
+
                         else:
                             column_list.append((column_name, selected_tipo))
                             column_name_box.text = ""
@@ -161,17 +184,17 @@ def create_table_interface(hdd, admin_tablas):
                         new_table = Tabla(table_name)
                         for column_name, column_type in column_list:
                             if isinstance(column_type, tuple):
-                                new_table.agregar_columna(column_name, column_type[0], column_type[1])
+                                new_table.agregar_columna(column_name, *column_type)
                             else:
                                 new_table.agregar_columna(column_name, column_type)
                         admin_tablas.tablas[table_name] = new_table
                         return
 
         screen.fill(WHITE)
-        draw_label(screen, "Creación de Tablas", WIDTH // 2 - 300, HEIGHT // 2 - 220)
-        draw_label(screen, "Nombre de la Tabla:", WIDTH // 2 - 350, HEIGHT // 2 - 190)
-        draw_label(screen, "Nombre de la Columna:", WIDTH // 2 - 350, HEIGHT // 2 - 130)
-        draw_label(screen, "Tipo de la Columna:", WIDTH // 2 - 350, HEIGHT // 2 - 90)
+        draw_label(screen, "Creación de Tablas", WIDTH // 2 - 300 + offset_x, HEIGHT // 2 - 220 + offset_y)
+        draw_label(screen, "Nombre de la Tabla:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 190 + offset_y)
+        draw_label(screen, "Nombre de la Columna:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 130 + offset_y)
+        draw_label(screen, "Tipo de la Columna:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 90 + offset_y)
 
         table_name_box.draw(screen)
         column_name_box.draw(screen)
@@ -181,18 +204,27 @@ def create_table_interface(hdd, admin_tablas):
             draw_button(screen, tipos_datos[i], button, color, BLACK)
 
         if selected_tipo == "varchar":
-            draw_label(screen, "Tamaño de Varchar:", WIDTH // 2 - 350, HEIGHT // 2 - 20)
+            draw_label(screen, "Tamaño de Varchar:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 60 + offset_y)
             varchar_length_box.draw(screen)
+
+        if selected_tipo == "decimal":
+            draw_label(screen, "Precisión:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 + 20 + offset_y)
+            decimal_precision_box.draw(screen)
+            draw_label(screen, "Escala:", WIDTH // 2 + 10 + offset_x, HEIGHT // 2 + 20 + offset_y)
+            decimal_scale_box.draw(screen)
 
         draw_button(screen, "Agregar Columna", add_column_button, LIGHT_BLUE, BLACK)
         draw_button(screen, "Finalizar", finalize_button, LIGHT_BLUE, BLACK)
 
-        y_offset = HEIGHT // 2 + 220
+        y_offset = HEIGHT // 2 + 220 + offset_y
         for column_name, column_type in column_list:
             if isinstance(column_type, tuple):
-                draw_label(screen, f"{column_name} ({column_type[0]}[{column_type[1]}])", WIDTH // 2 - 300, y_offset)
+                if column_type[0] == "decimal":
+                    draw_label(screen, f"{column_name} ({column_type[0]}[{column_type[1]},{column_type[2]}])", WIDTH // 2 - 300 + offset_x, y_offset)
+                else:
+                    draw_label(screen, f"{column_name} ({column_type[0]}[{column_type[1]}])", WIDTH // 2 - 300 + offset_x, y_offset)
             else:
-                draw_label(screen, f"{column_name} ({column_type})", WIDTH // 2 - 300, y_offset)
+                draw_label(screen, f"{column_name} ({column_type})", WIDTH // 2 - 300 + offset_x, y_offset)
             y_offset += 30
 
         draw_disk_and_buttons(hdd)
@@ -252,37 +284,33 @@ def upload_csv_interface(hdd, admin_tablas):
                         if value is None or value == "":
                             raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
 
-                        if isinstance(value, str):
-                            value = value.strip()
-
                         if column_type == "int":
-                            cleaned_value = "".join(ch for ch in value if ch.isdigit() or ch == '-')
-                            if cleaned_value == "":
-                                raise ValueError(f"El valor para '{column_name}' debe ser un entero. Valor recibido: '{value}' en la fila {row_number}.")
                             try:
-                                value = int(cleaned_value)
+                                value = int(value)
                             except ValueError:
-                                raise ValueError(f"El valor para '{column_name}' debe ser un entero. Valor recibido: '{value}' en la fila {row_number}.")
-
+                                raise ValueError(f"El valor para '{column_name}' debe ser un entero.")
                         elif column_type == "float":
-                            cleaned_value = value.replace(",", "").strip()
                             try:
-                                value = float(cleaned_value)
+                                value = float(value)
                             except ValueError:
-                                raise ValueError(f"El valor para '{column_name}' debe ser un flotante. Valor recibido: '{value}' en la fila {row_number}.")
-
+                                raise ValueError(f"El valor para '{column_name}' debe ser un flotante.")
                         elif column_type == "varchar":
                             if len(value) > column_size:
                                 raise ValueError(f"El valor en {column_name} excede el tamaño permitido de {column_size}.")
+                        elif column_type == "date":
+                            try:
+                                datetime.strptime(value, "%Y-%m-%d")
+                            except ValueError:
+                                raise ValueError(f"El valor para '{column_name}' debe ser una fecha válida (YYYY-MM-DD).")
+                        elif column_type == "boolean":
+                            if value.lower() not in ["true", "false"]:
+                                raise ValueError(f"El valor para '{column_name}' debe ser 'true' o 'false'.")
+                            value = value.lower() == "true"
 
                         data[column_name] = value
 
-                    row_values = []
-                    for (col_name, col_type, col_size) in table.columnas:
-                        row_values.append(data[col_name])
-
+                    row_values = [data[col[0]] for col in table.columnas]
                     table.insertar_dato(row_values)
-
                     hdd.escribir_dato(str(data), prefijo=selected_table)
                 except Exception as e:
                     print(f"Error al procesar la fila {row_number}: {e}")
@@ -304,6 +332,7 @@ def search_data_interface(hdd, admin_tablas):
     search_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 100, 250, 40)
     search_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
     cancel_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 50)
+    error_message = None
 
     while True:
         for event in pygame.event.get():
@@ -323,22 +352,28 @@ def search_data_interface(hdd, admin_tablas):
                     if selected_table:
                         table = admin_tablas.obtener_tabla(selected_table)
                         search_value = search_box.get_text()
+                        id_columns = ["Index", "ID", "Indice"]
+                        search_column = next((col[0] for col in table.columnas if col[0] in id_columns), None)
+
+                        if not search_column:
+                            error_message = "La tabla seleccionada no tiene una columna de identificación válida."
+                            continue
 
                         try:
                             search_value = int(search_value)
-                            result = table.buscar_dato("Index", search_value)
+                            result = table.buscar_dato(search_column, search_value)
                             if result:
                                 print(f"Dato encontrado en la tabla: {result}")
                                 hdd_data = hdd.obtener_datos_completos(search_value)
-                                if hdd_data:
+                                if hdd_data["datos"]:
                                     print(f"Datos guardados en el HDD: {hdd_data['datos']}")
                                     print(f"Ubicaciones en el HDD (plato, pista, sector): {hdd_data['ubicaciones']}")
                                 else:
                                     print("Dato encontrado pero no ubicado en el HDD.")
                             else:
-                                print("Dato no encontrado.")
+                                error_message = "Dato no encontrado."
                         except ValueError:
-                            print("Por favor, ingrese un ID válido (debe ser un número entero).")
+                            error_message = "Por favor, ingrese un ID válido (debe ser un número entero)."
                         return
 
                 if cancel_button.collidepoint(event.pos):
@@ -357,6 +392,9 @@ def search_data_interface(hdd, admin_tablas):
             draw_button(screen, "Buscar", search_button, LIGHT_BLUE, BLACK)
 
         draw_button(screen, "Cancelar", cancel_button, LIGHT_BLUE, BLACK)
+
+        if error_message:
+            draw_label(screen, error_message, WIDTH // 2 - 300, HEIGHT // 2 + 200, color=(255, 0, 0))
 
         draw_disk_and_buttons(hdd)
         pygame.display.flip()
