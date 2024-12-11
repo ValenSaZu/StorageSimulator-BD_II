@@ -318,37 +318,21 @@ def search_data_interface(hdd, admin_tablas):
                     for i, button in enumerate(table_buttons):
                         if button.collidepoint(event.pos):
                             selected_table = tablas[i]
-                            print(f"Tabla seleccionada: {selected_table}")
 
                 if search_button.collidepoint(event.pos):
                     if selected_table:
                         table = admin_tablas.obtener_tabla(selected_table)
                         search_value = search_box.get_text()
 
-                        # Buscar la columna de identificación
-                        id_columns = ["ID", "Index", "Indice"]
-                        search_column = next((col[0] for col in table.columnas if col[0] in id_columns), None)
-
-                        if not search_column:
-                            print("La tabla seleccionada no tiene una columna de identificación válida.")
-                            return
-
                         try:
                             search_value = int(search_value)
-                            result = table.buscar_dato(search_column, search_value)
-
+                            result = table.buscar_dato("Index", search_value)
                             if result:
                                 print(f"Dato encontrado en la tabla: {result}")
                                 hdd_data = hdd.obtener_datos_completos(search_value)
-
                                 if hdd_data:
-                                    print("Datos asociados en el HDD:")
-                                    for i, dato in enumerate(hdd_data["datos"]):
-                                        ubicacion = hdd_data["ubicaciones"][i]
-                                        print(f"  - Dato: {dato}, Ubicación: Plato {ubicacion[0]}, Pista {ubicacion[1]}, Sector {ubicacion[2]}")
-
-                                    draw_label(screen, f"Dato: {result}", WIDTH // 2 - 300, HEIGHT // 2 + 100)
-                                    draw_label(screen, f"Ubicaciones: {hdd_data['ubicaciones']}", WIDTH // 2 - 300, HEIGHT // 2 + 140)
+                                    print(f"Datos guardados en el HDD: {hdd_data['datos']}")
+                                    print(f"Ubicaciones en el HDD (plato, pista, sector): {hdd_data['ubicaciones']}")
                                 else:
                                     print("Dato encontrado pero no ubicado en el HDD.")
                             else:
@@ -373,6 +357,7 @@ def search_data_interface(hdd, admin_tablas):
             draw_button(screen, "Buscar", search_button, LIGHT_BLUE, BLACK)
 
         draw_button(screen, "Cancelar", cancel_button, LIGHT_BLUE, BLACK)
+
         draw_disk_and_buttons(hdd)
         pygame.display.flip()
 

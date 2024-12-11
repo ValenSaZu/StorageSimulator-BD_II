@@ -31,8 +31,7 @@ class HDD:
         return f"{prefijo}:{self.contador_direcciones}"
 
     def escribir_dato(self, datos, prefijo="dato"):
-        datos_json = json.dumps(datos)
-        datos_bytes = datos_json.encode('utf-8')
+        datos_bytes = datos.encode('utf-8')
         tamano_datos = len(datos_bytes)
         tamano_sector = self.platos[0].pistas[0].sectores[0].tamano_bytes
 
@@ -40,10 +39,8 @@ class HDD:
         direcciones_fragmentos = []
 
         for fragmento in fragmentos:
-            if len(fragmento) > tamano_sector:
-                raise ValueError(f"El fragmento excede el tamaño permitido de {tamano_sector} bytes.")
-
             direccion_logica = self.generar_direccion_logica(prefijo)
+            espacio_asignado = False
             for plato_index, plato in enumerate(self.platos):
                 for pista_index, pista in enumerate(plato.pistas):
                     for sector_index, sector in enumerate(pista.sectores):
@@ -53,16 +50,14 @@ class HDD:
                             sector.offset = len(fragmento)
                             self.tabla_direcciones.agregar_direccion(direccion_logica, f"{plato_index}-{pista_index}-{sector_index}")
                             direcciones_fragmentos.append(direccion_logica)
+                            espacio_asignado = True
                             break
-                    else:
-                        continue
+                    if espacio_asignado:
+                        break
+                if espacio_asignado:
                     break
-                else:
-                    continue
-                break
-            else:
-                raise ValueError("No hay espacio disponible en el HDD.")
-
+            if not espacio_asignado:
+                raise ValueError("No hay espacio disponible en el HDD para guardar todos los fragmentos del dato.")
         return direcciones_fragmentos
 
     def leer_dato(self, direcciones_logicas):
@@ -99,29 +94,19 @@ class HDD:
         return None
 
     def obtener_datos_completos(self, dato_id):
-        """
-        Retorna los datos completos asociados al ID dado junto con las ubicaciones físicas.
-        """
-        datos_completos = []
-        ubicaciones = []
+        datos_encontrados = {"datos": [], "ubicaciones": []}
+        dato_id_str = str(dato_id)
 
         for plato_index, plato in enumerate(self.platos):
             for pista_index, pista in enumerate(plato.pistas):
                 for sector_index, sector in enumerate(pista.sectores):
                     if sector.ocupado:
                         try:
-                            dato = json.loads(sector.datos)
-                            if dato.get("Index") == dato_id:
-                                datos_completos.append(dato)
-                                ubicaciones.append((plato_index, pista_index, sector_index))
-                        except json.JSONDecodeError:
+                            dato = eval(sector.datos)
+                            if isinstance(dato, dict) and dato.get("Index") == dato_id:
+                                datos_encontrados["datos"].append(dato)
+                                datos_encontrados["ubicaciones"].append((plato_index, pista_index, sector_index))
+                        except (SyntaxError, ValueError):
                             continue
 
-        if not datos_completos:
-            print("Dato no encontrado en ningún sector.")
-            return None
-
-        return {
-            "datos": datos_completos,
-            "ubicaciones": ubicaciones
-        }
+        return datos_encontrados if datos_encontrados["datos"] else None
