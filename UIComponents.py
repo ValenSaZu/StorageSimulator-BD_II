@@ -1,18 +1,32 @@
 import pygame
+import math
 
-def draw_disk(screen, hdd, start_x, start_y, cell_size):
-    x = start_x
-    y = start_y
-    for plato in range(hdd.num_platos):
-        for pista in range(hdd.num_pistas_por_plato):
-            for sector in range(hdd.num_sectores_por_pista):
-                sector_obj = hdd.platos[plato].pistas[pista].sectores[sector]
-                color = (0, 255, 0) if sector_obj.ocupado else (255, 0, 0)
-                pygame.draw.rect(screen, color, pygame.Rect(x, y, cell_size, cell_size))
-                x += cell_size
-            x = start_x
-            y += cell_size
-        y += 20
+def draw_disk(screen, hdd, start_x, start_y, disk_radius):
+    center_x, center_y = start_x, start_y
+    num_pistas = hdd.num_pistas_por_plato
+    num_sectores = hdd.num_sectores_por_pista
+    sector_angle = 360 / num_sectores
+
+    for pista in range(num_pistas):
+        track_radius = disk_radius - (pista * (disk_radius // num_pistas))
+        pygame.draw.circle(screen, (0, 0, 0), (center_x, center_y), track_radius, 2)
+
+        for sector in range(num_sectores):
+            start_angle = math.radians(sector * sector_angle)
+            end_x = center_x + track_radius * math.cos(start_angle)
+            end_y = center_y + track_radius * math.sin(start_angle)
+            pygame.draw.line(screen, (0, 0, 0), (center_x, center_y), (end_x, end_y), 1)
+
+            sector_obj = hdd.platos[0].pistas[pista].sectores[sector]
+            color = (0, 255, 0) if sector_obj.ocupado else (255, 0, 0)
+            pygame.draw.arc(
+                screen,
+                color,
+                pygame.Rect(center_x - track_radius, center_y - track_radius, 2 * track_radius, 2 * track_radius),
+                start_angle,
+                math.radians((sector + 1) * sector_angle),
+                2
+            )
 
 class InputBox:
     def __init__(self, x, y, w, h, text='', font=None):

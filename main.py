@@ -1,5 +1,7 @@
 import pygame
 import sys
+import csv
+from tkinter import Tk, filedialog
 from HDDStructure import HDD
 from UIComponents import InputBox, draw_button, draw_label, draw_disk
 from TableManager import AdministradorTablas, Tabla
@@ -22,7 +24,7 @@ def show_start_screen():
     pygame.time.wait(2000)
 
 def draw_disk_and_buttons(hdd):
-    draw_disk(screen, hdd, WIDTH // 2 + 150, HEIGHT // 2 - 200, 30)
+    draw_disk(screen, hdd, WIDTH // 2 + 300, HEIGHT // 2 + 50, 200)
 
 def create_disk_interface():
     platos_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 150, 250, 40)
@@ -86,14 +88,14 @@ def main_menu(hdd, admin_tablas):
                 if create_table_button.collidepoint(event.pos):
                     create_table_interface(hdd, admin_tablas)
                 elif add_data_button.collidepoint(event.pos):
-                    add_data_interface(hdd, admin_tablas)
+                    upload_csv_interface(hdd, admin_tablas)
                 elif search_data_button.collidepoint(event.pos):
                     search_data_interface(hdd, admin_tablas)
 
         screen.fill(WHITE)
 
         draw_button(screen, "Crear Tabla", create_table_button, LIGHT_BLUE, BLACK)
-        draw_button(screen, "Añadir Dato", add_data_button, LIGHT_BLUE, BLACK)
+        draw_button(screen, "Añadir Datos", add_data_button, LIGHT_BLUE, BLACK)
         draw_button(screen, "Buscar Dato", search_data_button, LIGHT_BLUE, BLACK)
 
         draw_disk_and_buttons(hdd)
@@ -195,90 +197,86 @@ def create_table_interface(hdd, admin_tablas):
         draw_disk_and_buttons(hdd)
         pygame.display.flip()
 
-def add_data_interface(hdd, admin_tablas):
+def upload_csv_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
     if not tablas:
         print("No hay tablas disponibles.")
         return
 
     selected_table = None
+    Tk().withdraw()
+    filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+    if not filepath:
+        print("No se seleccionó ningún archivo.")
+        return
 
-    table_buttons = [
-        pygame.Rect(WIDTH // 2 - 125, HEIGHT // 2 - 150 + i * 50, 250, 40)
-        for i in range(len(tablas))
-    ]
+    try:
+        with open(filepath, newline='', encoding='utf-8') as csvfile:
+            try:
+                sniffer = csv.Sniffer()
+                dialect = sniffer.sniff(csvfile.read(1024))
+                csvfile.seek(0)
+            except csv.Error:
+                print("No se pudo detectar el delimitador, usando coma por defecto.")
+                dialect = csv.excel
+                dialect.delimiter = ','
 
-    submit_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 300, 200, 50)
-    cancel_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 360, 200, 50)
+            reader = csv.DictReader(csvfile, dialect=dialect)
 
-    input_boxes = []
+            csv_headers = [header.strip().strip('"').strip(';') for header in reader.fieldnames]
+            print(f"Encabezados del archivo CSV (limpiados): {csv_headers}")
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+            if not selected_table:
+                selected_table = tablas[0]
 
-            if selected_table and input_boxes:
-                for box in input_boxes:
-                    box.handle_event(event)
+            table = admin_tablas.obtener_tabla(selected_table)
+            table_columns = [column[0] for column in table.columnas]
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if not selected_table:
-                    for i, button in enumerate(table_buttons):
-                        if button.collidepoint(event.pos):
-                            selected_table = tablas[i]
-                            table = admin_tablas.obtener_tabla(selected_table)
-                            for column in table.columnas:
-                                input_boxes.append(InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 150 + len(input_boxes) * 50, 250, 40))
+            missing_columns = [col for col in table_columns if col not in csv_headers]
+            if missing_columns:
+                raise ValueError(f"Faltan las siguientes columnas en el archivo CSV: {', '.join(missing_columns)}")
 
-                if submit_button.collidepoint(event.pos):
-                    if selected_table:
-                        table = admin_tablas.obtener_tabla(selected_table)
-                        data = {}
-                        try:
-                            for i, box in enumerate(input_boxes):
-                                column_name, column_type, column_size = table.columnas[i]
-                                value = box.get_text()
-                                if column_type == "int":
-                                    value = int(value)
-                                elif column_type == "float":
-                                    value = float(value)
-                                elif column_type == "varchar":
-                                    if len(value) > column_size:
-                                        raise ValueError(f"El valor excede el tamaño de {column_size} para la columna {column_name}.")
-                                data[column_name] = value
+            for row_number, row in enumerate(reader, start=1):
+                try:
+                    cleaned_row = {
+                        k.strip().strip('"'): v.strip().strip('"') if isinstance(v, str) and v else None
+                        for k, v in row.items()
+                    }
+                    print(f"Fila {row_number} procesada: {cleaned_row}")
 
-                            table.insertar_dato(data)
-                            hdd.escribir_dato(str(data), prefijo=selected_table)
-                            print(f"Dato insertado en la tabla '{selected_table}': {data}")
-                            return
-                        except ValueError as e:
-                            print(f"Error al insertar dato: {e}")
+                    data = {}
+                    for column_name, column_type, column_size in table.columnas:
+                        value = cleaned_row.get(column_name)
 
-                if cancel_button.collidepoint(event.pos):
-                    return
+                        if value is None or value == "":
+                            raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
 
-        screen.fill(WHITE)
+                        value = value.strip() if isinstance(value, str) else value
 
-        if not selected_table:
-            draw_label(screen, "Seleccionar Tabla:", WIDTH // 2 - 300, HEIGHT // 2 - 220)
-            for i, button in enumerate(table_buttons):
-                draw_button(screen, tablas[i], button, LIGHT_BLUE, BLACK)
-        else:
-            draw_label(screen, f"Añadir Datos a: {selected_table}", WIDTH // 2 - 300, HEIGHT // 2 - 220)
-            for i, box in enumerate(input_boxes):
-                column_name = admin_tablas.obtener_tabla(selected_table).columnas[i][0]
-                draw_label(screen, column_name, WIDTH // 2 - 300, HEIGHT // 2 - 150 + i * 50)
-                box.draw(screen)
+                        if column_type == "int":
+                            try:
+                                value = int(value.replace(",", " ").strip())
+                            except ValueError:
+                                raise ValueError(f"El valor para '{column_name}' debe ser un entero. Valor recibido: '{value}' en la fila {row_number}.")
+                        
+                        elif column_type == "float":
+                            try:
+                                value = float(value.replace(",", " ").strip())
+                            except ValueError:
+                                raise ValueError(f"El valor para '{column_name}' debe ser un flotante. Valor recibido: '{value}' en la fila {row_number}.")
+                        
+                        elif column_type == "varchar":
+                            if len(value) > column_size:
+                                raise ValueError(f"El valor en {column_name} excede el tamaño permitido de {column_size}.")
 
-            draw_button(screen, "Añadir", submit_button, LIGHT_BLUE, BLACK)
+                        data[column_name] = value
 
-        draw_button(screen, "Cancelar", cancel_button, LIGHT_BLUE, BLACK)
-
-        draw_disk_and_buttons(hdd)
-
-        pygame.display.flip()
+                    table.insertar_dato(data)
+                    hdd.escribir_dato(str(data), prefijo=selected_table)
+                except Exception as e:
+                    print(f"Error al procesar la fila {row_number}: {e}")
+    except Exception as e:
+        print(f"Error al procesar el archivo CSV: {e}")
 
 def search_data_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
