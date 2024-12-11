@@ -1,5 +1,4 @@
 import pygame
-import sys
 
 def draw_disk(screen, hdd, start_x, start_y, cell_size):
     x = start_x
@@ -7,7 +6,8 @@ def draw_disk(screen, hdd, start_x, start_y, cell_size):
     for plato in range(hdd.num_platos):
         for pista in range(hdd.num_pistas_por_plato):
             for sector in range(hdd.num_sectores_por_pista):
-                color = (0, 255, 0) if hdd.sectores[plato][pista][sector] else (255, 0, 0)
+                sector_obj = hdd.platos[plato].pistas[pista].sectores[sector]
+                color = (0, 255, 0) if sector_obj.ocupado else (255, 0, 0)
                 pygame.draw.rect(screen, color, pygame.Rect(x, y, cell_size, cell_size))
                 x += cell_size
             x = start_x
@@ -45,14 +45,12 @@ class InputBox:
     def get_text(self):
         return self.text
 
-
 def draw_button(screen, text, rect, color, text_color=(0, 0, 0), border_radius=15, font=None):
     pygame.draw.rect(screen, color, rect, border_radius=border_radius)
     font = font if font else pygame.font.Font(None, 36)
     text_surface = font.render(text, True, text_color)
     text_rect = text_surface.get_rect(center=rect.center)
     screen.blit(text_surface, text_rect)
-
 
 def draw_label(screen, text, x, y, font=None, color=(0, 0, 0)):
     font = font if font else pygame.font.Font(None, 28)

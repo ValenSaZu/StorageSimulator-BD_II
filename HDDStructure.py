@@ -17,6 +17,10 @@ class Plato:
 
 class HDD:
     def __init__(self, num_platos, num_pistas_por_plato, num_sectores_por_pista, tamano_bytes):
+        self.num_platos = num_platos
+        self.num_pistas_por_plato = num_pistas_por_plato
+        self.num_sectores_por_pista = num_sectores_por_pista
+        self.tamano_bytes = tamano_bytes
         self.platos = [Plato(num_pistas_por_plato, num_sectores_por_pista, tamano_bytes) for _ in range(num_platos)]
         self.tabla_direcciones = TablaDirecciones_HDD()
         self.contador_direcciones = 0
@@ -54,7 +58,6 @@ class HDD:
             else:
                 raise ValueError("No hay espacio disponible en el HDD.")
 
-        print(f"Fragmentos escritos: {direcciones_fragmentos}")
         return direcciones_fragmentos
 
     def leer_dato(self, direcciones_logicas):
@@ -76,6 +79,5 @@ class HDD:
     def _traducir_direccion(self, direccion_logica):
         direccion_fisica = self.tabla_direcciones.obtener_direccion(direccion_logica)
         if direccion_fisica:
-            print(f"Traduciendo {direccion_logica} -> {direccion_fisica}")
             return map(int, direccion_fisica.split("-"))
         raise ValueError(f"La dirección lógica {direccion_logica} no está mapeada a ninguna dirección física.")

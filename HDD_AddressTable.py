@@ -1,39 +1,30 @@
 import json
 
-class HDD:
-    def __init__(self, num_platos, num_pistas_por_plato, num_sectores_por_pista, tamano_bytes):
-        self.num_platos = num_platos
-        self.num_pistas_por_plato = num_pistas_por_plato
-        self.num_sectores_por_pista = num_sectores_por_pista
-        self.tamano_bytes = tamano_bytes
-        self.sectores = [[[None for _ in range(num_sectores_por_pista)]
-                          for _ in range(num_pistas_por_plato)]
-                         for _ in range(num_platos)]
+class TablaDirecciones_HDD:
+    
+    def __init__(self, archivo_tabla="tabla_direcciones_hdd.json"):
+        self.archivo_tabla = archivo_tabla
+        self.direcciones = self._cargar_tabla()
 
-    def escribir_dato(self, dato):
-        bytes_restantes = len(dato)
-        direccion = []
-        for plato in range(self.num_platos):
-            for pista in range(self.num_pistas_por_plato):
-                for sector in range(self.num_sectores_por_pista):
-                    if self.sectores[plato][pista][sector] is None:
-                        if bytes_restantes > self.tamano_bytes:
-                            self.sectores[plato][pista][sector] = dato[:self.tamano_bytes]
-                            direccion.append((plato, pista, sector))
-                            dato = dato[self.tamano_bytes:]
-                            bytes_restantes -= self.tamano_bytes
-                        else:
-                            self.sectores[plato][pista][sector] = dato
-                            direccion.append((plato, pista, sector))
-                            return direccion
-        raise ValueError("No hay espacio suficiente para almacenar el dato.")
+    def _cargar_tabla(self):
+        try:
+            with open(self.archivo_tabla, "r") as archivo:
+                return json.load(archivo)
+        except FileNotFoundError:
+            return {}
 
-    def leer_dato(self, direccion):
-        datos = []
-        for (plato, pista, sector) in direccion:
-            if self.sectores[plato][pista][sector] is not None:
-                datos.append(self.sectores[plato][pista][sector])
-        return ''.join(datos)
+    def guardar_tabla(self):
+        with open(self.archivo_tabla, "w") as archivo:
+            json.dump(self.direcciones, archivo)
 
-    def mostrar_sectores(self):
-        return self.sectores
+    def agregar_direccion(self, direccion_logica, direccion_fisica):
+        if direccion_logica in self.direcciones:
+            raise ValueError(f"La dirección lógica {direccion_logica} ya existe.")
+        self.direcciones[direccion_logica] = direccion_fisica
+        self.guardar_tabla()
+
+    def obtener_direccion(self, direccion_logica):
+        return self.direcciones.get(direccion_logica, None)
+    
+    def listar_direcciones(self):
+        return self.direcciones.items()

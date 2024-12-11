@@ -1,5 +1,4 @@
 import pygame
-import math
 import sys
 from HDDStructure import HDD
 from UIComponents import InputBox, draw_button, draw_label, draw_disk
@@ -12,14 +11,8 @@ pygame.display.set_caption("Simulador de Base de Datos")
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-BLUE = (50, 150, 255)
 LIGHT_BLUE = (100, 200, 255)
-DARK_BLUE = (0, 100, 200)
 
-ubi = (WIDTH // 2 + 320, HEIGHT // 2 - 130)
-radio_base = 50
-incremento_radio = 30
-num_platos, num_pistas, num_sectores, tamano_bytes = 0, 0, 0, 0
 
 def show_start_screen():
     font = pygame.font.Font(None, 74)
@@ -29,9 +22,12 @@ def show_start_screen():
     pygame.display.flip()
     pygame.time.wait(2000)
 
-def create_disk_interface():
-    global num_platos, num_pistas, num_sectores, tamano_bytes
 
+def draw_disk_and_buttons(hdd):
+    draw_disk(screen, hdd, WIDTH // 2 + 150, HEIGHT // 2 - 200, 30)
+
+
+def create_disk_interface():
     platos_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 150, 250, 40)
     pistas_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 90, 250, 40)
     sectores_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 30, 250, 40)
@@ -64,13 +60,10 @@ def create_disk_interface():
         screen.fill(WHITE)
 
         draw_label(screen, "Configuración del Disco Duro", WIDTH // 2 - 300, HEIGHT // 2 - 220, font=pygame.font.Font(None, 48))
-        draw_label(screen, "Por favor, complete los campos:", WIDTH // 2 - 200, HEIGHT // 2 - 180, font=pygame.font.Font(None, 28))
-
-        label_font = pygame.font.Font(None, 28)
-        draw_label(screen, "Número de Platos:", WIDTH // 2 - 350, HEIGHT // 2 - 140, font=label_font)
-        draw_label(screen, "Número de Pistas:", WIDTH // 2 - 350, HEIGHT // 2 - 80, font=label_font)
-        draw_label(screen, "Número de Sectores:", WIDTH // 2 - 350, HEIGHT // 2 - 20, font=label_font)
-        draw_label(screen, "Tamaño (bytes/sector):", WIDTH // 2 - 350, HEIGHT // 2 + 40, font=label_font)
+        draw_label(screen, "Número de Platos:", WIDTH // 2 - 350, HEIGHT // 2 - 140)
+        draw_label(screen, "Número de Pistas:", WIDTH // 2 - 350, HEIGHT // 2 - 80)
+        draw_label(screen, "Número de Sectores:", WIDTH // 2 - 350, HEIGHT // 2 - 20)
+        draw_label(screen, "Tamaño (bytes/sector):", WIDTH // 2 - 350, HEIGHT // 2 + 40)
 
         platos_box.draw(screen)
         pistas_box.draw(screen)
@@ -81,20 +74,53 @@ def create_disk_interface():
 
         pygame.display.flip()
 
-def manage_tables_interface(hdd):
-    admin_tablas = AdministradorTablas()
 
-    tabla_en_creacion = None
+def main_menu(hdd, admin_tablas):
+    create_table_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 - 100, 200, 50)
+    add_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2, 200, 50)
+    search_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 + 100, 200, 50)
 
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if create_table_button.collidepoint(event.pos):
+                    create_table_interface(hdd, admin_tablas)
+                elif add_data_button.collidepoint(event.pos):
+                    add_data_interface(hdd, admin_tablas)
+                elif search_data_button.collidepoint(event.pos):
+                    search_data_interface(hdd, admin_tablas)
+
+        screen.fill(WHITE)
+
+        draw_button(screen, "Crear Tabla", create_table_button, LIGHT_BLUE, BLACK)
+        draw_button(screen, "Añadir Dato", add_data_button, LIGHT_BLUE, BLACK)
+        draw_button(screen, "Buscar Dato", search_data_button, LIGHT_BLUE, BLACK)
+
+        draw_disk_and_buttons(hdd)
+
+        pygame.display.flip()
+
+
+def create_table_interface(hdd, admin_tablas):
     table_name_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 200, 250, 40)
     column_name_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 140, 250, 40)
-    length_box = InputBox(WIDTH // 2 + 150, HEIGHT // 2 - 80, 100, 40)
-    create_table_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 - 20, 200, 50)
-    add_column_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 50)
-    finalize_table_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 140, 200, 50)
+    varchar_length_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2, 250, 40)
 
     tipos_datos = ["int", "float", "varchar"]
-    selected_type_index = 0
+    tipo_buttons = [
+        pygame.Rect(WIDTH // 2 - 125, HEIGHT // 2 - 70 + i * 50, 250, 40)
+        for i in range(len(tipos_datos))
+    ]
+
+    add_column_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 100, 200, 50)
+    finalize_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 160, 200, 50)
+
+    column_list = []
+    selected_tipo = None
 
     while True:
         for event in pygame.event.get():
@@ -104,118 +130,91 @@ def manage_tables_interface(hdd):
 
             table_name_box.handle_event(event)
             column_name_box.handle_event(event)
-            length_box.handle_event(event)
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    selected_type_index = (selected_type_index - 1) % len(tipos_datos)
-                elif event.key == pygame.K_DOWN:
-                    selected_type_index = (selected_type_index + 1) % len(tipos_datos)
+            varchar_length_box.handle_event(event)
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if create_table_button.collidepoint(event.pos):
-                    table_name = table_name_box.get_text()
-                    if table_name and not tabla_en_creacion:
-                        tabla_en_creacion = Tabla(table_name)
-                        print(f"Tabla '{table_name}' en proceso de creación.")
+                for i, button in enumerate(tipo_buttons):
+                    if button.collidepoint(event.pos):
+                        selected_tipo = tipos_datos[i]
 
-                if add_column_button.collidepoint(event.pos) and tabla_en_creacion:
+                if add_column_button.collidepoint(event.pos):
                     column_name = column_name_box.get_text()
-                    column_type = tipos_datos[selected_type_index]
-                    try:
-                        if column_type == "varchar":
-                            length = int(length_box.get_text())
-                            tabla_en_creacion.agregar_columna(column_name, (column_type, length))
+                    if column_name and selected_tipo:
+                        if selected_tipo == "varchar":
+                            try:
+                                varchar_length = int(varchar_length_box.get_text())
+                                if varchar_length > 0:
+                                    column_list.append((column_name, (selected_tipo, varchar_length)))
+                                    column_name_box.text = ""
+                                    varchar_length_box.text = ""
+                                    selected_tipo = None
+                                else:
+                                    print("El tamaño de 'varchar' debe ser mayor a 0.")
+                            except ValueError:
+                                print("El tamaño de 'varchar' debe ser un número entero válido.")
                         else:
-                            tabla_en_creacion.agregar_columna(column_name, column_type)
-                        print(f"Columna '{column_name}' de tipo '{column_type}' agregada a la tabla '{tabla_en_creacion.nombre}'.")
-                    except Exception as e:
-                        print(e)
+                            column_list.append((column_name, selected_tipo))
+                            column_name_box.text = ""
+                            selected_tipo = None
 
-                if finalize_table_button.collidepoint(event.pos) and tabla_en_creacion:
-                    admin_tablas.tablas[tabla_en_creacion.nombre] = tabla_en_creacion
-                    print(f"Tabla '{tabla_en_creacion.nombre}' creada con éxito.")
-                    tabla_en_creacion = None
+                if finalize_button.collidepoint(event.pos):
+                    table_name = table_name_box.get_text()
+                    if table_name and column_list:
+                        new_table = Tabla(table_name)
+                        for column_name, column_type in column_list:
+                            if isinstance(column_type, tuple):
+                                new_table.agregar_columna(column_name, column_type[0], column_type[1])
+                            else:
+                                new_table.agregar_columna(column_name, column_type)
+                        admin_tablas.tablas[table_name] = new_table
+                        return
 
         screen.fill(WHITE)
-
-        draw_label(screen, "Creación de Tablas", WIDTH // 2 - 200, HEIGHT // 2 - 260, font=pygame.font.Font(None, 48))
-        draw_label(screen, "Nombre de la Tabla:", WIDTH // 2 - 300, HEIGHT // 2 - 190)
-        draw_label(screen, "Nombre de la Columna:", WIDTH // 2 - 300, HEIGHT // 2 - 130)
-        draw_label(screen, "Tipo de Dato (flechas):", WIDTH // 2 - 300, HEIGHT // 2 - 70)
-        draw_label(screen, f"Tipo Seleccionado: {tipos_datos[selected_type_index]}", WIDTH // 2 + 150, HEIGHT // 2 - 70)
-
-        if tipos_datos[selected_type_index] == "varchar":
-            draw_label(screen, "Longitud (solo varchar):", WIDTH // 2 - 300, HEIGHT // 2 - 10)
+        draw_label(screen, "Creación de Tablas", WIDTH // 2 - 300, HEIGHT // 2 - 220)
+        draw_label(screen, "Nombre de la Tabla:", WIDTH // 2 - 350, HEIGHT // 2 - 190)
+        draw_label(screen, "Nombre de la Columna:", WIDTH // 2 - 350, HEIGHT // 2 - 130)
+        draw_label(screen, "Tipo de la Columna:", WIDTH // 2 - 350, HEIGHT // 2 - 90)
 
         table_name_box.draw(screen)
         column_name_box.draw(screen)
-        if tipos_datos[selected_type_index] == "varchar":
-            length_box.draw(screen)
 
-        draw_button(screen, "Crear Tabla", create_table_button, LIGHT_BLUE, BLACK)
+        for i, button in enumerate(tipo_buttons):
+            color = LIGHT_BLUE if tipos_datos[i] == selected_tipo else WHITE
+            draw_button(screen, tipos_datos[i], button, color, BLACK)
+
+        if selected_tipo == "varchar":
+            draw_label(screen, "Tamaño de Varchar:", WIDTH // 2 - 350, HEIGHT // 2 - 20)
+            varchar_length_box.draw(screen)
+
         draw_button(screen, "Agregar Columna", add_column_button, LIGHT_BLUE, BLACK)
-        draw_button(screen, "Finalizar Tabla", finalize_table_button, LIGHT_BLUE, BLACK)
+        draw_button(screen, "Finalizar", finalize_button, LIGHT_BLUE, BLACK)
 
+        y_offset = HEIGHT // 2 + 220
+        for column_name, column_type in column_list:
+            if isinstance(column_type, tuple):
+                draw_label(screen, f"{column_name} ({column_type[0]}[{column_type[1]}])", WIDTH // 2 - 300, y_offset)
+            else:
+                draw_label(screen, f"{column_name} ({column_type})", WIDTH // 2 - 300, y_offset)
+            y_offset += 30
+
+        draw_disk_and_buttons(hdd)
         pygame.display.flip()
 
-def manage_data_interface(tabla, hdd):
-    input_boxes = []
-    for i, (columna, tipo, tamano) in enumerate(tabla.columnas):
-        input_boxes.append(InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 200 + i * 60, 250, 40))
 
-    insert_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 50)
+def add_data_interface(hdd, admin_tablas):
+    print("Añadir datos aún no está implementado.")
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
 
-            for box in input_boxes:
-                box.handle_event(event)
+def search_data_interface(hdd, admin_tablas):
+    print("Buscar datos aún no está implementado.")
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if insert_button.collidepoint(event.pos):
-                    try:
-                        datos = []
-                        for box, (columna, tipo, tamano) in zip(input_boxes, tabla.columnas):
-                            if tipo == "varchar":
-                                valor = box.get_text()
-                                if len(valor) > tamano:
-                                    raise ValueError(f"El valor '{valor}' excede la longitud de {tamano} en '{columna}'.")
-                                datos.append(valor)
-                            elif tipo == "int":
-                                datos.append(int(box.get_text()))
-                            elif tipo == "float":
-                                datos.append(float(box.get_text()))
 
-                        tabla.insertar_dato(datos)
-                        hdd.escribir_dato(str(datos), prefijo=tabla.nombre)
-                        print(f"Datos insertados correctamente: {datos}")
-                    except Exception as e:
-                        print(e)
+def main():
+    show_start_screen()
+    hdd = create_disk_interface()
+    admin_tablas = AdministradorTablas()
+    main_menu(hdd, admin_tablas)
 
-        screen.fill(WHITE)
 
-        draw_label(screen, f"Insertar en la Tabla: {tabla.nombre}", WIDTH // 2 - 200, HEIGHT // 2 - 260)
-        for i, (columna, _, _) in enumerate(tabla.columnas):
-            draw_label(screen, f"{columna}:", WIDTH // 2 - 300, HEIGHT // 2 - 200 + i * 60)
-            input_boxes[i].draw(screen)
-
-        draw_button(screen, "Insertar Datos", insert_button, LIGHT_BLUE, BLACK)
-        pygame.display.flip()
-
-show_start_screen()
-hdd = create_disk_interface()
-manage_tables_interface(hdd)
-
-screen.fill(WHITE)
-draw_disk(num_pistas, num_sectores)
-pygame.display.flip()
-
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+if __name__ == "__main__":
+    main()
