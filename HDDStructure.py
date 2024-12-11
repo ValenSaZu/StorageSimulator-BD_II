@@ -25,6 +25,7 @@ class HDD:
         self.platos = [Plato(num_pistas_por_plato, num_sectores_por_pista, tamano_bytes) for _ in range(num_platos)]
         self.tabla_direcciones = TablaDirecciones_HDD()
         self.contador_direcciones = 0
+        self.index_map = {}  # Diccionario para mapear ID (Index) a las direcciones fragmentos
 
     def generar_direccion_logica(self, prefijo):
         self.contador_direcciones += 1
@@ -82,31 +83,37 @@ class HDD:
             return map(int, direccion_fisica.split("-"))
         raise ValueError(f"La dirección lógica {direccion_logica} no está mapeada a ninguna dirección física.")
 
-    def obtener_direccion_fisica(self, dato):
-        dato_str = str(dato)
-        for plato_index, plato in enumerate(self.platos):
-            for pista_index, pista in enumerate(plato.pistas):
-                for sector_index, sector in enumerate(pista.sectores):
-                    if sector.datos == dato_str:
-                        print(f"Dato encontrado en Plato: {plato_index}, Pista: {pista_index}, Sector: {sector_index}")
-                        return plato_index, pista_index, sector_index
-        print("Dato no encontrado en ningún sector.")
-        return None
+    def guardar_mapeo_index(self, index_value, direcciones_fragmentos):
+        # Forzar index_value a int para asegurar coherencia.
+        index_value = int(index_value)
+        self.index_map[index_value] = direcciones_fragmentos
 
-    def obtener_datos_completos(self, dato_id):
-        datos_encontrados = {"datos": [], "ubicaciones": []}
-        dato_id_str = str(dato_id)
+    def obtener_datos_completos(self, index_value):
+        # Asegúrate de que index_value sea int, ya que se guardó como entero.
+        index_value = int(index_value)
 
-        for plato_index, plato in enumerate(self.platos):
-            for pista_index, pista in enumerate(plato.pistas):
-                for sector_index, sector in enumerate(pista.sectores):
-                    if sector.ocupado:
-                        try:
-                            dato = json.loads(sector.datos)
-                            if isinstance(dato, dict) and str(dato.get("Index")) == dato_id_str:
-                                datos_encontrados["datos"].append(dato)
-                                datos_encontrados["ubicaciones"].append((plato_index, pista_index, sector_index))
-                        except (json.JSONDecodeError, ValueError):
-                            continue
+        if index_value not in self.index_map:
+            return None
 
-        return datos_encontrados if datos_encontrados["datos"] else None
+        direcciones_fragmentos = self.index_map[index_value]
+
+        # Lee el dato completo desde el HDD
+        contenido = self.leer_dato(direcciones_fragmentos)
+
+        # Asumiendo que 'contenido' es un JSON serializado del diccionario original
+        try:
+            datos = json.loads(contenido)
+        except json.JSONDecodeError:
+            # Si no es JSON, simplemente devuélvelo como una cadena
+            datos = contenido
+
+        # Obtiene las ubicaciones físicas
+        ubicaciones = []
+        for direccion_logica in direcciones_fragmentos:
+            plato_index, pista_index, sector_index = self._traducir_direccion(direccion_logica)
+            ubicaciones.append((plato_index, pista_index, sector_index))
+
+        return {
+            "datos": datos,
+            "ubicaciones": ubicaciones
+        }

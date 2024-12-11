@@ -304,6 +304,7 @@ def upload_csv_interface(hdd, admin_tablas):
                         if value is None or value == "":
                             raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
 
+                        # Conversión de tipos
                         if column_type == "int":
                             try:
                                 value = int(value)
@@ -318,6 +319,7 @@ def upload_csv_interface(hdd, admin_tablas):
                             if len(value) > column_size:
                                 raise ValueError(f"El valor en {column_name} excede el tamaño permitido de {column_size}.")
                         elif column_type == "date":
+                            from datetime import datetime
                             try:
                                 datetime.strptime(value, "%Y-%m-%d")
                             except ValueError:
@@ -325,17 +327,28 @@ def upload_csv_interface(hdd, admin_tablas):
                         elif column_type == "boolean":
                             if value.lower() not in ["true", "false"]:
                                 raise ValueError(f"El valor para '{column_name}' debe ser 'true' o 'false'.")
-                            value = value.lower() == "true"
+                            value = (value.lower() == "true")
 
                         data[column_name] = value
 
+                    # Insertar el dato en la tabla
                     row_values = [data[col[0]] for col in table.columnas]
                     table.insertar_dato(row_values)
-                    hdd.escribir_dato(str(data), prefijo=selected_table)
+
+                    # Escribir el dato en el HDD
+                    direcciones_fragmentos = hdd.escribir_dato(str(data), prefijo=selected_table)
+
+                    # Guardar mapeo entre el valor de Index y las direcciones
+                    # Asegúrate de que "Index" sea el nombre exacto de la columna que actúa como ID
+                    index_value = data["Index"]
+                    hdd.guardar_mapeo_index(index_value, direcciones_fragmentos)
+
                 except Exception as e:
                     print(f"Error al procesar la fila {row_number}: {e}")
     except Exception as e:
         print(f"Error al procesar el archivo CSV: {e}")
+
+
 
 def search_data_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
