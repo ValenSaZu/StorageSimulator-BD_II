@@ -13,7 +13,6 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 LIGHT_BLUE = (100, 200, 255)
 
-
 def show_start_screen():
     font = pygame.font.Font(None, 74)
     text = font.render("Simulador de Base de Datos", True, BLACK)
@@ -22,10 +21,8 @@ def show_start_screen():
     pygame.display.flip()
     pygame.time.wait(2000)
 
-
 def draw_disk_and_buttons(hdd):
     draw_disk(screen, hdd, WIDTH // 2 + 150, HEIGHT // 2 - 200, 30)
-
 
 def create_disk_interface():
     platos_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 150, 250, 40)
@@ -74,7 +71,6 @@ def create_disk_interface():
 
         pygame.display.flip()
 
-
 def main_menu(hdd, admin_tablas):
     create_table_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 - 100, 200, 50)
     add_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2, 200, 50)
@@ -103,7 +99,6 @@ def main_menu(hdd, admin_tablas):
         draw_disk_and_buttons(hdd)
 
         pygame.display.flip()
-
 
 def create_table_interface(hdd, admin_tablas):
     table_name_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 200, 250, 40)
@@ -200,21 +195,168 @@ def create_table_interface(hdd, admin_tablas):
         draw_disk_and_buttons(hdd)
         pygame.display.flip()
 
-
 def add_data_interface(hdd, admin_tablas):
-    print("Añadir datos aún no está implementado.")
+    tablas = admin_tablas.listar_tablas()
+    if not tablas:
+        print("No hay tablas disponibles.")
+        return
 
+    selected_table = None
+
+    table_buttons = [
+        pygame.Rect(WIDTH // 2 - 125, HEIGHT // 2 - 150 + i * 50, 250, 40)
+        for i in range(len(tablas))
+    ]
+
+    submit_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 300, 200, 50)
+    cancel_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 360, 200, 50)
+
+    input_boxes = []
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if selected_table and input_boxes:
+                for box in input_boxes:
+                    box.handle_event(event)
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if not selected_table:
+                    for i, button in enumerate(table_buttons):
+                        if button.collidepoint(event.pos):
+                            selected_table = tablas[i]
+                            table = admin_tablas.obtener_tabla(selected_table)
+                            for column in table.columnas:
+                                input_boxes.append(InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 150 + len(input_boxes) * 50, 250, 40))
+
+                if submit_button.collidepoint(event.pos):
+                    if selected_table:
+                        table = admin_tablas.obtener_tabla(selected_table)
+                        data = {}
+                        try:
+                            for i, box in enumerate(input_boxes):
+                                column_name, column_type, column_size = table.columnas[i]
+                                value = box.get_text()
+                                if column_type == "int":
+                                    value = int(value)
+                                elif column_type == "float":
+                                    value = float(value)
+                                elif column_type == "varchar":
+                                    if len(value) > column_size:
+                                        raise ValueError(f"El valor excede el tamaño de {column_size} para la columna {column_name}.")
+                                data[column_name] = value
+
+                            table.insertar_dato(data)
+                            hdd.escribir_dato(str(data), prefijo=selected_table)
+                            print(f"Dato insertado en la tabla '{selected_table}': {data}")
+                            return
+                        except ValueError as e:
+                            print(f"Error al insertar dato: {e}")
+
+                if cancel_button.collidepoint(event.pos):
+                    return
+
+        screen.fill(WHITE)
+
+        if not selected_table:
+            draw_label(screen, "Seleccionar Tabla:", WIDTH // 2 - 300, HEIGHT // 2 - 220)
+            for i, button in enumerate(table_buttons):
+                draw_button(screen, tablas[i], button, LIGHT_BLUE, BLACK)
+        else:
+            draw_label(screen, f"Añadir Datos a: {selected_table}", WIDTH // 2 - 300, HEIGHT // 2 - 220)
+            for i, box in enumerate(input_boxes):
+                column_name = admin_tablas.obtener_tabla(selected_table).columnas[i][0]
+                draw_label(screen, column_name, WIDTH // 2 - 300, HEIGHT // 2 - 150 + i * 50)
+                box.draw(screen)
+
+            draw_button(screen, "Añadir", submit_button, LIGHT_BLUE, BLACK)
+
+        draw_button(screen, "Cancelar", cancel_button, LIGHT_BLUE, BLACK)
+
+        draw_disk_and_buttons(hdd)
+
+        pygame.display.flip()
 
 def search_data_interface(hdd, admin_tablas):
-    print("Buscar datos aún no está implementado.")
+    tablas = admin_tablas.listar_tablas()
+    if not tablas:
+        print("No hay tablas disponibles.")
+        return
 
+    selected_table = None
+    table_buttons = [
+        pygame.Rect(WIDTH // 2 - 125, HEIGHT // 2 - 150 + i * 50, 250, 40)
+        for i in range(len(tablas))
+    ]
+
+    search_box = InputBox(WIDTH // 2 - 125, HEIGHT // 2 - 100, 250, 40)
+    search_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
+    cancel_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 50)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            search_box.handle_event(event)
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if not selected_table:
+                    for i, button in enumerate(table_buttons):
+                        if button.collidepoint(event.pos):
+                            selected_table = tablas[i]
+
+                if search_button.collidepoint(event.pos):
+                    if selected_table:
+                        table = admin_tablas.obtener_tabla(selected_table)
+                        search_value = search_box.get_text()
+                        try:
+                            search_value = int(search_value)
+                            result = table.buscar_dato("ID", search_value)
+                            if result:
+                                print(f"Dato encontrado: {result}")
+                                hdd_address = hdd.obtener_direccion_fisica(result)
+                                if hdd_address:
+                                    print(f"Ubicación en HDD: Plato {hdd_address[0]}, Pista {hdd_address[1]}, Sector {hdd_address[2]}")
+                                    draw_label(screen, f"Ubicación: Plato {hdd_address[0]}, Pista {hdd_address[1]}, Sector {hdd_address[2]}", WIDTH // 2 - 300, HEIGHT // 2 + 100)
+                                else:
+                                    print("Dato no encontrado en el HDD.")
+                            else:
+                                print("Dato no encontrado.")
+                        except ValueError:
+                            print("Por favor, ingrese un ID válido.")
+                        return
+
+                if cancel_button.collidepoint(event.pos):
+                    return
+
+        screen.fill(WHITE)
+
+        if not selected_table:
+            draw_label(screen, "Seleccionar Tabla:", WIDTH // 2 - 300, HEIGHT // 2 - 220)
+            for i, button in enumerate(table_buttons):
+                draw_button(screen, tablas[i], button, LIGHT_BLUE, BLACK)
+        else:
+            draw_label(screen, f"Buscar Dato en: {selected_table}", WIDTH // 2 - 300, HEIGHT // 2 - 220)
+            draw_label(screen, "ID del Dato:", WIDTH // 2 - 300, HEIGHT // 2 - 140)
+            search_box.draw(screen)
+            draw_button(screen, "Buscar", search_button, LIGHT_BLUE, BLACK)
+
+        draw_button(screen, "Cancelar", cancel_button, LIGHT_BLUE, BLACK)
+
+        draw_disk_and_buttons(hdd)
+
+        pygame.display.flip()
 
 def main():
     show_start_screen()
     hdd = create_disk_interface()
     admin_tablas = AdministradorTablas()
     main_menu(hdd, admin_tablas)
-
 
 if __name__ == "__main__":
     main()

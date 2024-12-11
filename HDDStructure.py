@@ -81,3 +81,14 @@ class HDD:
         if direccion_fisica:
             return map(int, direccion_fisica.split("-"))
         raise ValueError(f"La dirección lógica {direccion_logica} no está mapeada a ninguna dirección física.")
+
+    def obtener_direccion_fisica(self, dato):
+        dato_str = str(dato)
+        for plato_index, plato in enumerate(self.platos):
+            for pista_index, pista in enumerate(plato.pistas):
+                for sector_index, sector in enumerate(pista.sectores):
+                    if sector.datos == dato_str:
+                        print(f"Dato encontrado en Plato: {plato_index}, Pista: {pista_index}, Sector: {sector_index}")
+                        return plato_index, pista_index, sector_index
+        print("Dato no encontrado en ningún sector.")
+        return None
