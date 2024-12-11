@@ -2,8 +2,8 @@ import pygame
 import math
 import sys
 from HDDStructure import HDD
-from UIComponents import InputBox, draw_button, draw_label
-from TableManager import AdministradorTablas
+from UIComponents import InputBox, draw_button, draw_label, draw_disk
+from TableManager import AdministradorTablas, Tabla
 
 pygame.init()
 WIDTH, HEIGHT = 1200, 800
@@ -20,16 +20,6 @@ ubi = (WIDTH // 2 + 320, HEIGHT // 2 - 130)
 radio_base = 50
 incremento_radio = 30
 num_platos, num_pistas, num_sectores, tamano_bytes = 0, 0, 0, 0
-
-def draw_disk(num_pistas, num_sectores):
-    for pista in range(num_pistas):
-        radio = radio_base + incremento_radio * pista
-        pygame.draw.circle(screen, BLACK, ubi, radio, 1)
-        for sector in range(num_sectores):
-            angle = (2 * math.pi / num_sectores) * sector
-            x = ubi[0] + radio * math.cos(angle)
-            y = ubi[1] - radio * math.sin(angle)
-            pygame.draw.line(screen, BLACK, ubi, (x, y), 1)
 
 def show_start_screen():
     font = pygame.font.Font(None, 74)

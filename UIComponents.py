@@ -1,4 +1,18 @@
 import pygame
+import sys
+
+def draw_disk(screen, hdd, start_x, start_y, cell_size):
+    x = start_x
+    y = start_y
+    for plato in range(hdd.num_platos):
+        for pista in range(hdd.num_pistas_por_plato):
+            for sector in range(hdd.num_sectores_por_pista):
+                color = (0, 255, 0) if hdd.sectores[plato][pista][sector] else (255, 0, 0)
+                pygame.draw.rect(screen, color, pygame.Rect(x, y, cell_size, cell_size))
+                x += cell_size
+            x = start_x
+            y += cell_size
+        y += 20
 
 class InputBox:
     def __init__(self, x, y, w, h, text='', font=None):
