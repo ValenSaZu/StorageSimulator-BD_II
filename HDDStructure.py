@@ -3,7 +3,7 @@ import json
 
 class Sector:
     def __init__(self, tamano_bytes):
-        self.datos = ""
+        self.datos = b""
         self.ocupado = False
         self.offset = 0
         self.tamano_bytes = tamano_bytes
@@ -46,10 +46,16 @@ class HDD:
                 for pista_index, pista in enumerate(plato.pistas):
                     for sector_index, sector in enumerate(pista.sectores):
                         if not sector.ocupado:
-                            sector.datos = fragmento.decode('utf-8', errors='replace')
+                            sector.datos = fragmento
                             sector.ocupado = True
                             sector.offset = len(fragmento)
-                            self.tabla_direcciones.agregar_direccion(direccion_logica, f"{plato_index}-{pista_index}-{sector_index}")
+                            direccion_fisica = f"{plato_index}-{pista_index}-{sector_index}"
+                            
+                            # Validación de formato de direccion_fisica
+                            if len(direccion_fisica.split("-")) != 3:
+                                raise ValueError(f"Formato de direccion_fisica inválido: '{direccion_fisica}'. Debe ser 'plato-pista-sector'.")
+
+                            self.tabla_direcciones.agregar_direccion(direccion_logica, direccion_fisica)
                             direcciones_fragmentos.append(direccion_logica)
                             espacio_asignado = True
                             break
@@ -72,7 +78,7 @@ class HDD:
             plato = self.platos[plato_index]
             sector = plato.pistas[pista_index].sectores[sector_index]
             if sector.ocupado:
-                datos += sector.datos.encode('utf-8')
+                datos += sector.datos
             else:
                 raise ValueError(f"Sector {direccion_logica} vacío o no asignado.")
         return datos.decode('utf-8', errors='replace')
@@ -80,15 +86,21 @@ class HDD:
     def _traducir_direccion(self, direccion_logica):
         direccion_fisica = self.tabla_direcciones.obtener_direccion(direccion_logica)
         if direccion_fisica:
-            return map(int, direccion_fisica.split("-"))
+            # Convertir el objeto map a una tupla
+            return tuple(map(int, direccion_fisica.split("-")))
         raise ValueError(f"La dirección lógica {direccion_logica} no está mapeada a ninguna dirección física.")
 
     def guardar_mapeo_index(self, index_value, direcciones_fragmentos):
-        index_value = int(index_value)
+        # index_value ya es una cadena, no se convierte a entero
+        if not isinstance(index_value, str):
+            raise TypeError("El valor del índice debe ser una cadena.")
         self.index_map[index_value] = direcciones_fragmentos
+        print(f"Mapeo guardado: {index_value} -> {direcciones_fragmentos}")
 
     def obtener_datos_completos(self, index_value):
-        index_value = int(index_value)
+        # index_value ya es una cadena, no se convierte a entero
+        if not isinstance(index_value, str):
+            raise TypeError("El valor del índice debe ser una cadena.")
 
         if index_value not in self.index_map:
             return None

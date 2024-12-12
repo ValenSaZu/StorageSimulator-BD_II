@@ -41,7 +41,7 @@ class Tabla:
                 if not isinstance(valor, float):
                     raise ValueError(f"El valor para '{nombre}' debe ser un número flotante.")
             elif tipo == "decimal":
-                if not isinstance(valor, float):
+                if not isinstance(valor, Decimal):
                     raise ValueError(f"El valor para '{nombre}' debe ser un número decimal.")
                 if tamano is not None:
                     precision, scale = tamano

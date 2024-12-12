@@ -70,3 +70,12 @@ def draw_label(screen, text, x, y, font=None, color=(0, 0, 0)):
     font = font if font else pygame.font.Font(None, 28)
     label_surface = font.render(text, True, color)
     screen.blit(label_surface, (x, y))
+
+def display_error(screen, message, x=50, y=50, font=None, color=(255, 0, 0)):
+    font = font if font else pygame.font.Font(None, 28)
+    lines = message.split('\n')
+    for i, line in enumerate(lines):
+        error_surface = font.render(line, True, color)
+        screen.blit(error_surface, (x, y + i * 30))
+    pygame.display.flip()
+    pygame.time.wait(3000)

@@ -12,6 +12,9 @@ class TablaDirecciones_HDD:
                 return json.load(archivo)
         except FileNotFoundError:
             return {}
+        except json.JSONDecodeError:
+            print("Error: El archivo de tabla de direcciones está corrupto.")
+            return {}
 
     def guardar_tabla(self):
         with open(self.archivo_tabla, "w") as archivo:
@@ -20,6 +23,16 @@ class TablaDirecciones_HDD:
     def agregar_direccion(self, direccion_logica, direccion_fisica):
         if direccion_logica in self.direcciones:
             raise ValueError(f"La dirección lógica {direccion_logica} ya existe.")
+        
+        # Validación del formato de direccion_fisica
+        parts = direccion_fisica.split("-")
+        if len(parts) != 3:
+            raise ValueError(f"Formato de direccion_fisica inválido: '{direccion_fisica}'. Debe ser 'plato-pista-sector'.")
+        try:
+            plato, pista, sector = map(int, parts)
+        except ValueError:
+            raise ValueError(f"direccion_fisica contiene valores no enteros: '{direccion_fisica}'.")
+
         self.direcciones[direccion_logica] = direccion_fisica
         self.guardar_tabla()
 
