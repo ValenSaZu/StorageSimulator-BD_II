@@ -130,41 +130,99 @@ def create_table_from_txt(filepath, admin_tablas):
     try:
         with open(filepath, 'r') as file:
             lines = file.readlines()
-        
+
         create_statement = [line.strip() for line in lines if line.strip()]
-        
-        if not create_statement[0].startswith("CREATE TABLE"):
+
+        if not create_statement[0].upper().startswith("CREATE TABLE"):
             raise ValueError("El archivo no contiene una declaración válida de 'CREATE TABLE'.")
 
-        table_name = create_statement[0].split("CREATE TABLE")[1].strip().split("(")[0].strip()
-        column_definitions = create_statement[1:-1]
-        column_definitions = [col.replace(",", "").strip() for col in column_definitions]
-        
-        new_table = Tabla(table_name)
-        for column_def in column_definitions:
-            parts = column_def.split()
-            column_name = parts[0]
-            column_type = parts[1].lower()
-            constraints = parts[2:]
-            
-            if "varchar" in column_type:
-                size = int(column_type.split("(")[1].replace(")", ""))
-                new_table.agregar_columna(column_name, "varchar", size)
-            elif "integer" in column_type or column_type == "int":
-                new_table.agregar_columna(column_name, "int")
-            elif "float" in column_type or "decimal" in column_type:
-                if "decimal" in column_type:
-                    precision, scale = map(int, column_type.split("(")[1].replace(")", "").split(","))
-                    new_table.agregar_columna(column_name, "decimal", (precision, scale))
+        match_table = re.match(r'CREATE TABLE\s+(\w+)\s*\(', create_statement[0], re.IGNORECASE)
+        if not match_table:
+            raise ValueError("Formato de 'CREATE TABLE' inválido.")
+
+        table_name = match_table.group(1)
+
+        column_definitions = []
+        table_constraints = []
+        for line in create_statement[1:]:
+            if line.startswith(")"):
+                break
+            line = line.rstrip(',').strip()
+            if line:
+                if re.match(r'PRIMARY KEY\s*\(', line, re.IGNORECASE) or re.match(r'FOREIGN KEY\s*\(', line, re.IGNORECASE):
+                    table_constraints.append(line)
                 else:
-                    new_table.agregar_columna(column_name, "float")
-            elif "boolean" in column_type:
-                new_table.agregar_columna(column_name, "boolean")
-            elif "date" in column_type:
-                new_table.agregar_columna(column_name, "date")
+                    column_definitions.append(line)
+
+        new_table = Tabla(table_name)
+
+        for column_def in column_definitions:
+            match_column = re.match(r'([\w\.]+)\s+(\w+(?:\([^\)]+\))?)\s*(.*)', column_def, re.IGNORECASE)
+            if not match_column:
+                raise ValueError(f"Formato de columna inválido: '{column_def}'")
+
+            column_name = match_column.group(1)
+            column_type_raw = match_column.group(2).lower()
+            constraints = match_column.group(3).upper()
+
+            type_match = re.match(r'(\w+)(?:\(([^)]+)\))?', column_type_raw)
+            if not type_match:
+                raise ValueError(f"Tipo de dato inválido para la columna '{column_name}': '{column_type_raw}'")
+
+            base_type = type_match.group(1)
+            type_params = type_match.group(2)
+
+            es_primary_key = False
+            no_null = False
+
+            if "PRIMARY KEY" in constraints:
+                es_primary_key = True
+            if "NOT NULL" in constraints:
+                no_null = True
+
+            if base_type in ["varchar"]:
+                if not type_params:
+                    raise ValueError(f"El tipo '{base_type}' requiere un tamaño especificado.")
+                size = int(type_params)
+                new_table.agregar_columna(column_name, "varchar", size, es_primary_key=es_primary_key, no_null=no_null)
+
+            elif base_type in ["integer", "int"]:
+                new_table.agregar_columna(column_name, "int", tamano=None, es_primary_key=es_primary_key, no_null=no_null)
+
+            elif base_type in ["float"]:
+                new_table.agregar_columna(column_name, "float", tamano=None, es_primary_key=es_primary_key, no_null=no_null)
+
+            elif base_type == "decimal":
+                if not type_params:
+                    raise ValueError(f"El tipo '{base_type}' requiere precisión y escala especificadas.")
+                params = [param.strip() for param in type_params.split(',')]
+                if len(params) != 2:
+                    raise ValueError(f"El tipo '{base_type}' requiere dos parámetros: precisión y escala.")
+                precision, scale = map(int, params)
+                new_table.agregar_columna(column_name, "decimal", (precision, scale), es_primary_key=es_primary_key, no_null=no_null)
+
+            elif base_type == "boolean":
+                new_table.agregar_columna(column_name, "boolean", tamano=None, es_primary_key=es_primary_key, no_null=no_null)
+
+            elif base_type == "date":
+                new_table.agregar_columna(column_name, "date", tamano=None, es_primary_key=es_primary_key, no_null=no_null)
+
             else:
-                raise ValueError(f"Tipo de columna desconocido: {column_type}")
-        
+                raise ValueError(f"Tipo de columna desconocido: '{base_type}'")
+
+            print(f"Columna '{column_name}' agregada con tipo '{base_type}' y tamaño '{type_params}'.")
+
+        for constraint in table_constraints:
+            if constraint.upper().startswith("PRIMARY KEY"):
+                match_pk = re.match(r'PRIMARY KEY\s*\(([\w\.]+)\)', constraint, re.IGNORECASE)
+                if not match_pk:
+                    raise ValueError(f"Formato de PRIMARY KEY inválido: '{constraint}'")
+                pk_column = match_pk.group(1)
+                if not any(col[0] == pk_column for col in new_table.columnas):
+                    raise ValueError(f"Clave primaria especificada para columna inexistente: '{pk_column}'")
+                new_table.primary_key = pk_column
+                print(f"Clave primaria establecida en la columna '{pk_column}'.")
+
         admin_tablas.tablas[table_name] = new_table
         print(f"Tabla '{table_name}' creada con éxito desde el archivo {filepath}.")
 
@@ -219,11 +277,16 @@ def upload_csv_interface(hdd, admin_tablas):
                     print(f"Fila {row_number} procesada: {cleaned_row}")
 
                     data = {}
-                    for column_name, column_type, column_size in table.columnas:
+                    for column_name, column_type, column_size, es_primary_key, no_null in table.columnas:
                         value = cleaned_row.get(column_name)
 
                         if value is None or value == "":
-                            raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
+                            if no_null:
+                                raise ValueError(f"Columna {column_name} faltante o vacía en la fila {row_number}.")
+                            else:
+                                data[column_name] = None
+                                continue
+
                         if column_type == "int":
                             try:
                                 value = int(value)
@@ -237,8 +300,21 @@ def upload_csv_interface(hdd, admin_tablas):
                         elif column_type == "varchar":
                             if len(value) > column_size:
                                 raise ValueError(f"El valor en {column_name} excede el tamaño permitido de {column_size}.")
+                        elif column_type == "decimal":
+                            if not isinstance(column_size, tuple) or len(column_size) != 2:
+                                raise ValueError(f"Definición de tamaño inválida para la columna '{column_name}'.")
+                            precision, scale = column_size
+                            try:
+                                value = float(value)
+                                # Validar precisión y escala
+                                partes = str(value).split('.')
+                                integer_part = partes[0]
+                                decimal_part = partes[1] if len(partes) > 1 else ''
+                                if len(integer_part) > (precision - scale) or len(decimal_part) > scale:
+                                    raise ValueError(f"El valor para '{column_name}' excede la precisión o escala especificada.")
+                            except ValueError:
+                                raise ValueError(f"El valor para '{column_name}' debe ser un número decimal válido.")
                         elif column_type == "date":
-                            from datetime import datetime
                             try:
                                 datetime.strptime(value, "%Y-%m-%d")
                             except ValueError:
@@ -253,7 +329,7 @@ def upload_csv_interface(hdd, admin_tablas):
                     row_values = [data[col[0]] for col in table.columnas]
                     table.insertar_dato(row_values)
                     direcciones_fragmentos = hdd.escribir_dato(str(data), prefijo=selected_table)
-                    index_value = data["Index"]
+                    index_value = data["product.partNumber"]  # Ajusta la clave según la definición de la tabla
                     hdd.guardar_mapeo_index(index_value, direcciones_fragmentos)
 
                 except Exception as e:
@@ -298,7 +374,7 @@ def search_data_interface(hdd, admin_tablas):
 
                         try:
                             search_value = int(search_value)
-                            result = table.buscar_dato("Index", search_value)
+                            result = table.buscar_dato("product.partNumber", search_value)  # Ajusta la clave según la definición de la tabla
                             if result:
                                 print(f"Dato encontrado en la tabla: {result}")
                                 hdd_data = hdd.obtener_datos_completos(search_value)
