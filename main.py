@@ -87,9 +87,9 @@ def create_disk_interface():
 def main_menu(hdd, admin_tablas):
     global plato_actual
 
-    create_table_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 - 100, 200, 50)
-    add_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2, 200, 50)
-    search_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 + 100, 200, 50)
+    add_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 - 100, 200, 50)
+    search_data_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2, 200, 50)
+    load_table_button = pygame.Rect(WIDTH // 2 - 300, HEIGHT // 2 + 100, 200, 50)
 
     while True:
         for event in pygame.event.get():
@@ -100,12 +100,15 @@ def main_menu(hdd, admin_tablas):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 prev_plato_button, next_plato_button = draw_disk_and_buttons(hdd, plato_actual)
 
-                if create_table_button.collidepoint(event.pos):
-                    create_table_interface(hdd, admin_tablas)
-                elif add_data_button.collidepoint(event.pos):
+                if add_data_button.collidepoint(event.pos):
                     upload_csv_interface(hdd, admin_tablas)
                 elif search_data_button.collidepoint(event.pos):
                     search_data_interface(hdd, admin_tablas)
+                elif load_table_button.collidepoint(event.pos):
+                    Tk().withdraw()
+                    filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+                    if filepath:
+                        create_table_from_txt(filepath, admin_tablas)
                 elif prev_plato_button.collidepoint(event.pos):
                     plato_actual = (plato_actual - 1) % hdd.num_platos
                 elif next_plato_button.collidepoint(event.pos):
@@ -113,9 +116,9 @@ def main_menu(hdd, admin_tablas):
 
         screen.fill(WHITE)
 
-        draw_button(screen, "Crear Tabla", create_table_button, LIGHT_BLUE, BLACK)
         draw_button(screen, "Añadir Datos", add_data_button, LIGHT_BLUE, BLACK)
         draw_button(screen, "Buscar Dato", search_data_button, LIGHT_BLUE, BLACK)
+        draw_button(screen, "Cargar Tabla", load_table_button, LIGHT_BLUE, BLACK)
 
         prev_plato_button, next_plato_button = draw_disk_and_buttons(hdd, plato_actual)
 
@@ -123,132 +126,50 @@ def main_menu(hdd, admin_tablas):
 
         pygame.display.flip()
 
-def create_table_interface(hdd, admin_tablas):
-    offset_x = -200
-    offset_y = -100
+def create_table_from_txt(filepath, admin_tablas):
+    try:
+        with open(filepath, 'r') as file:
+            lines = file.readlines()
+        
+        create_statement = [line.strip() for line in lines if line.strip()]
+        
+        if not create_statement[0].startswith("CREATE TABLE"):
+            raise ValueError("El archivo no contiene una declaración válida de 'CREATE TABLE'.")
 
-    table_name_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 200 + offset_y, 250, 40)
-    column_name_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 140 + offset_y, 250, 40)
-    varchar_length_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 50 + offset_y, 250, 40)
-    decimal_precision_box = InputBox(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 + 10 + offset_y, 120, 40)
-    decimal_scale_box = InputBox(WIDTH // 2 + 25 + offset_x, HEIGHT // 2 + 10 + offset_y, 120, 40)
-
-    tipos_datos = ["int", "bigint", "float", "decimal", "varchar", "text", "date", "datetime", "boolean"]
-    tipo_buttons = [
-        pygame.Rect(WIDTH // 2 - 125 + offset_x, HEIGHT // 2 - 70 + offset_y + i * 50, 250, 40)
-        for i in range(len(tipos_datos))
-    ]
-
-    add_column_button = pygame.Rect(WIDTH // 2 - 250 + offset_x, HEIGHT // 2 + 100 + offset_y, 200, 50)
-    finalize_button = pygame.Rect(WIDTH // 2 - 250 + offset_x, HEIGHT // 2 + 160 + offset_y, 200, 50)
-
-    column_list = []
-    selected_tipo = None
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-
-            table_name_box.handle_event(event)
-            column_name_box.handle_event(event)
-            varchar_length_box.handle_event(event)
-            decimal_precision_box.handle_event(event)
-            decimal_scale_box.handle_event(event)
-
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                for i, button in enumerate(tipo_buttons):
-                    if button.collidepoint(event.pos):
-                        selected_tipo = tipos_datos[i]
-
-                if add_column_button.collidepoint(event.pos):
-                    column_name = column_name_box.get_text()
-                    if column_name and selected_tipo:
-                        if selected_tipo == "varchar":
-                            try:
-                                varchar_length = int(varchar_length_box.get_text())
-                                if varchar_length > 0:
-                                    column_list.append((column_name, (selected_tipo, varchar_length)))
-                                    column_name_box.text = ""
-                                    varchar_length_box.text = ""
-                                    selected_tipo = None
-                                else:
-                                    print("El tamaño de 'varchar' debe ser mayor a 0.")
-                            except ValueError:
-                                print("El tamaño de 'varchar' debe ser un número entero válido.")
-
-                        elif selected_tipo == "decimal":
-                            try:
-                                precision = int(decimal_precision_box.get_text())
-                                scale = int(decimal_scale_box.get_text())
-                                if precision > 0 and 0 <= scale <= precision:
-                                    column_list.append((column_name, (selected_tipo, precision, scale)))
-                                    column_name_box.text = ""
-                                    decimal_precision_box.text = ""
-                                    decimal_scale_box.text = ""
-                                    selected_tipo = None
-                                else:
-                                    print("La precisión debe ser mayor a 0 y la escala debe ser entre 0 y la precisión.")
-                            except ValueError:
-                                print("La precisión y escala de 'decimal' deben ser números enteros.")
-
-                        else:
-                            column_list.append((column_name, selected_tipo))
-                            column_name_box.text = ""
-                            selected_tipo = None
-
-                if finalize_button.collidepoint(event.pos):
-                    table_name = table_name_box.get_text()
-                    if table_name and column_list:
-                        new_table = Tabla(table_name)
-                        for column_name, column_type in column_list:
-                            if isinstance(column_type, tuple):
-                                new_table.agregar_columna(column_name, *column_type)
-                            else:
-                                new_table.agregar_columna(column_name, column_type)
-                        admin_tablas.tablas[table_name] = new_table
-                        return
-
-        screen.fill(WHITE)
-        draw_label(screen, "Creación de Tablas", WIDTH // 2 - 300 + offset_x, HEIGHT // 2 - 220 + offset_y)
-        draw_label(screen, "Nombre de la Tabla:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 190 + offset_y)
-        draw_label(screen, "Nombre de la Columna:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 130 + offset_y)
-        draw_label(screen, "Tipo de la Columna:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 90 + offset_y)
-
-        table_name_box.draw(screen)
-        column_name_box.draw(screen)
-
-        for i, button in enumerate(tipo_buttons):
-            color = LIGHT_BLUE if tipos_datos[i] == selected_tipo else WHITE
-            draw_button(screen, tipos_datos[i], button, color, BLACK)
-
-        if selected_tipo == "varchar":
-            draw_label(screen, "Tamaño de Varchar:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 - 60 + offset_y)
-            varchar_length_box.draw(screen)
-
-        if selected_tipo == "decimal":
-            draw_label(screen, "Precisión:", WIDTH // 2 - 350 + offset_x, HEIGHT // 2 + 20 + offset_y)
-            decimal_precision_box.draw(screen)
-            draw_label(screen, "Escala:", WIDTH // 2 + 10 + offset_x, HEIGHT // 2 + 20 + offset_y)
-            decimal_scale_box.draw(screen)
-
-        draw_button(screen, "Agregar Columna", add_column_button, LIGHT_BLUE, BLACK)
-        draw_button(screen, "Finalizar", finalize_button, LIGHT_BLUE, BLACK)
-
-        y_offset = HEIGHT // 2 + 220 + offset_y
-        for column_name, column_type in column_list:
-            if isinstance(column_type, tuple):
-                if column_type[0] == "decimal":
-                    draw_label(screen, f"{column_name} ({column_type[0]}[{column_type[1]},{column_type[2]}])", WIDTH // 2 - 300 + offset_x, y_offset)
+        table_name = create_statement[0].split("CREATE TABLE")[1].strip().split("(")[0].strip()
+        column_definitions = create_statement[1:-1]
+        column_definitions = [col.replace(",", "").strip() for col in column_definitions]
+        
+        new_table = Tabla(table_name)
+        for column_def in column_definitions:
+            parts = column_def.split()
+            column_name = parts[0]
+            column_type = parts[1].lower()
+            constraints = parts[2:]
+            
+            if "varchar" in column_type:
+                size = int(column_type.split("(")[1].replace(")", ""))
+                new_table.agregar_columna(column_name, "varchar", size)
+            elif "integer" in column_type or column_type == "int":
+                new_table.agregar_columna(column_name, "int")
+            elif "float" in column_type or "decimal" in column_type:
+                if "decimal" in column_type:
+                    precision, scale = map(int, column_type.split("(")[1].replace(")", "").split(","))
+                    new_table.agregar_columna(column_name, "decimal", (precision, scale))
                 else:
-                    draw_label(screen, f"{column_name} ({column_type[0]}[{column_type[1]}])", WIDTH // 2 - 300 + offset_x, y_offset)
+                    new_table.agregar_columna(column_name, "float")
+            elif "boolean" in column_type:
+                new_table.agregar_columna(column_name, "boolean")
+            elif "date" in column_type:
+                new_table.agregar_columna(column_name, "date")
             else:
-                draw_label(screen, f"{column_name} ({column_type})", WIDTH // 2 - 300 + offset_x, y_offset)
-            y_offset += 30
+                raise ValueError(f"Tipo de columna desconocido: {column_type}")
+        
+        admin_tablas.tablas[table_name] = new_table
+        print(f"Tabla '{table_name}' creada con éxito desde el archivo {filepath}.")
 
-        draw_disk_and_buttons(hdd, plato_actual)
-        pygame.display.flip()
+    except Exception as e:
+        print(f"Error al procesar el archivo '{filepath}': {e}")
 
 def upload_csv_interface(hdd, admin_tablas):
     tablas = admin_tablas.listar_tablas()
